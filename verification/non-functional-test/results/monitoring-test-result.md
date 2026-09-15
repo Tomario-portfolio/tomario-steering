@@ -21,7 +21,7 @@
 | M-04 | ログ追跡性（Logs Insights） | 未実施（特定リクエスト ID・エラー文字列で絞り込み追跡できることを確認する） | ⬜ |
 | M-05 | ECS アプリログの出力確認 | 一部確認済み（staging layer4 で `/ecs/tomario-staging` の保持 30 日は確認）。ログ内容から直近リクエストを追う確認は未 | 🔺 一部 |
 | M-06 | メトリクスダッシュボードの視認性 | CPU 使用率ウィジェットは表示可。**RunningTaskCount は Container Insights 未有効のため未表示**（`scalability-test-result.md` P-07 と同一課題） | 🔺 一部 |
-| M-07 | WAF ログの配信確認（production） | 未実施（WAF 導入後。**配信先 S3 / CloudWatch Logs / Firehose が未決＝先に決めて実装が必要**） | ⬜ |
+| M-07 | WAF ログの配信確認（production） | **合格**。配信先は`modules/waf/logging.tf`でCloudWatch Logs（`aws-waf-logs-tomario-production-{cloudfront,alb}`）に実装済みだった（ドキュメント未反映だっただけ）。実際にログイベントが記録され、`action`（ALLOW/BLOCK）・`httpRequest`（uri・args・clientIp等）が読めることを確認（2026-09-12） | ✅ |
 | M-08 | WAF BlockedRequests アラートの発報（production） | 未実施（WAF 導入後、`BlockedRequests` にアラームを設定し攻撃検知で発報を確認） | ⬜ |
 
 ## 補足

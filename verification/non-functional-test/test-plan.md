@@ -15,7 +15,9 @@
 - 運用：監視・アラートが実際に発報するか、ロールバック・インフラ再構築ができるか
 - セキュリティ：既知の脆弱性が残っていないか、境界防御・証跡が有効に機能しているか
 
-**production 固有の追加検証**：production では staging に無い WAF・Security Hub・AWS Config を導入する（`security-environment-design.md`、面接期間のみ有効化。WAF は cost-stop/start に組み込む）。これらの有効性・誤検知・レイテンシ影響・ログ／アラート・cost-stop/start 組み込みを production（未公開期間）で追加検証する。項番は P-09 / M-07・M-08 / O-04・O-05 / S-07〜S-10。
+**production 固有の追加検証**：production では staging に無い WAF・Security Hub・AWS Config を導入する（`security-environment-design.md`、面接期間のみ有効化。WAF は cost-stop/start に組み込む）。これらの有効性・誤検知・レイテンシ影響・ログ／アラート・緊急デタッチ手順を production（未公開期間）で追加検証する。項番は P-09 / M-07・M-08 / O-05 / S-07〜S-10。
+
+> WAF Web ACL の cost-stop/start 組み込み自体（作成／関連付け／削除が壊れず回ること）は、cost-stop/start を日常運用として繰り返す中で自然に確認できるため、独立した試験項目（旧 O-04）としては置かず、`verification/env/production-only-test-items.md` の運用メモ側で扱う（2026-09-14）。
 
 ## 2. 対象環境・構成（共通前提）
 
@@ -102,7 +104,6 @@
 |---|---|---|---|---|
 | O-01 | 直近の正常リビジョン（1 つ前の digest）へ手動でロールバックできる | 旧イメージで稼働に復帰、所要時間を記録 | — | ロールバック手順が完走し、旧バージョンで正常稼働・疎通 |
 | O-02 | cost-stop → cost-start でインフラを再構築できる | destroy されたリソースが Terraform で再作成される | — | cost-start 後に全リソースが揃い、CloudFront 経由で疎通する |
-| O-04 | WAF Web ACL の cost-stop/start 組み込み（production） | cost-start で Web ACL 作成＋関連付け、cost-stop で関連付け解除＋削除、が壊れず回る | — | cost-start 後に `terraform plan` 差分ゼロ、WAF が CloudFront に関連付き。cost-stop 後に Web ACL が削除され課金が止まる |
 | O-05 | WAF 緊急デタッチ手順（production） | 誤検知で業務影響が出た場合に Terraform を待たず WAF を切り離せる | — | CLI で Web ACL の関連付けを解除する手順が完走し、直後にアクセスが復旧する |
 
 ### セキュリティ試験（S）— [procedures/security-test-procedure.md](procedures/security-test-procedure.md)
@@ -137,7 +138,7 @@
   → S-07（マネージドルールの有効性：攻撃ペイロードのブロック確認）
   → M-07（WAF ログ配信確認）→ M-08（BlockedRequests アラート発報）
   → P-09（WAF 有効／無効のレイテンシ差分）
-  → O-04（cost-stop/start 組み込み）→ O-05（緊急デタッチ手順）
+  → O-05（緊急デタッチ手順）
   → S-09（Security Hub findings レビュー）→ S-10（AWS Config コンプライアンス評価）
 ```
 

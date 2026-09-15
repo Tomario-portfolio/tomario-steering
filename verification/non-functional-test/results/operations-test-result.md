@@ -15,7 +15,6 @@
 |---|---|---|---|
 | O-01 | デプロイロールバック手順の実演 | 未実施（`update-service --task-definition <family>:<前revision> --force-new-deployment` → `wait services-stable` → 疎通確認、所要時間を記録する） | ⬜ |
 | O-02 | cost-stop / cost-start によるインフラ再構築確認 | cost-stop / cost-start は staging・production で繰り返し実施しており、cost-start 後に `terraform plan` 差分ゼロ・CloudFront 経由の疎通を都度確認している。**「試験」として所要時間・CloudFront 再作成の有無を記録した実績は未** | 🔺 一部 |
-| O-04 | WAF Web ACL の cost-stop/start 組み込み（production） | 未実施（WAF 導入後。cost-start で作成＋関連付け、cost-stop で解除＋削除が回ること、`terraform plan` 差分ゼロを確認） | ⬜ |
 | O-05 | WAF 緊急デタッチ手順（production） | 未実施（WAF 導入後。`disassociate-web-acl` でアクセス復旧できることを実演し、ランブックとして所要時間を記録） | ⬜ |
 | O-03 | ロールバック後の復帰（後始末） | 未実施（O-01 実施後に最新リビジョンへ戻す／様子見の判断を記録する） | ⬜ 後始末 |
 
