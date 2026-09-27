@@ -5,7 +5,7 @@
 
 ```
 evidence/
-  scalability/   … k6 サマリ出力、スケーリングアクティビティ一覧、CPU 使用率ウィジェット
+  performance/   … k6 サマリ出力、スケーリングアクティビティ一覧、CPU 使用率ウィジェット
   availability/  … デプロイイベント（FAILED→ロールバック）、describe-services の推移、該当エラーログ、rolling_deploy_health.log
   backup/        … LatestRestorableTime 確認出力、リストア実行ログ、復元先での件数確認
   monitoring/    … アラーム一覧、ALARM 遷移履歴、メール受信画面、Logs Insights 結果（未取得）
@@ -13,7 +13,7 @@ evidence/
   operations/    … describe-services の状態遷移、terraform plan 差分ゼロ出力、疎通確認結果（未取得）
 ```
 
-サブフォルダ名は `procedures/` / `results/` のファイル名と対応（`scalability-test-procedure.md` ⇔ `scalability-test-result.md` ⇔ `evidence/scalability/`）。
+サブフォルダ名は `procedures/` / `results/` のファイル名と対応（`performance-test-procedure.md` ⇔ `performance-test-result.md` ⇔ `evidence/performance/`）。
 
 ## 注意
 - 機密情報（DB エンドポイント、パスワード、アカウント ID 等）はマスクしてから格納する

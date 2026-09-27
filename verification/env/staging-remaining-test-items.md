@@ -17,27 +17,30 @@
 | SNSトピック（アラーム通知） | `arn:aws:sns:ap-northeast-1:418295697340:tomario-staging-alarm` |
 | RDSインスタンス | `tomario-staging-rds` |
 
-**注意**：staging は`cost-stop`で backend/network が destroy される運用。試験実施前に`cost-start`（`account_group=nonprod, env=staging`）で起動しておくこと。ECS/ALBが無い状態だとM-01/M-02/A-04/A-05/O-01/O-03等はそのまま失敗する。
+**注意**：staging は`cost-stop`で backend/network が destroy される運用。試験実施前に`cost-start`（`account_group=nonprod, env=staging`）で起動しておくこと。ECS/ALBが無い状態だとM-01/M-02/A-04/A-05/O-01/O-02等（旧O-03）はそのまま失敗する。
 
 ---
 
 ## 一覧
 
-| 項番 | 項目 | 対象 |
-|---|---|---|
-| P-00 | ベースライン測定 | staging |
-| P-08 | 目標スループット達成確認 | staging |
-| A-04 | 正常なローリングデプロイ中の無停止性 | staging |
-| A-05 | 壊れたリビジョンの後片付け | staging |
-| B-06 | 手動スナップショットからの復元（任意） | staging |
-| M-01 | SNSサブスクリプション確認 | dev/staging/production共通 |
-| M-02 | アラームがOK状態 | dev/staging/production共通 |
-| M-04 | ログ追跡性（Logs Insights） | dev/staging/production共通 |
-| O-01 | デプロイロールバック手順の実演 | staging |
-| O-03 | ロールバック後の復帰（後始末） | staging |
-| S-01 | 依存パッケージの脆弱性スキャン | CI（tomario-app） |
-| S-02 | コンテナイメージの脆弱性スキャン | ECR/ローカル |
-| S-06 | IAM最小権限の棚卸し（任意） | 全環境 |
+| 項番 | 項目 | 対象 | ステータス |
+|---|---|---|---|
+| P-00 | ベースライン測定 | staging | ✅ 2026-09-26完了（平均116ms） |
+| P-08 | 目標スループット達成確認 | staging | ⬜ |
+| A-04 | 正常なローリングデプロイ中の無停止性 | staging | ⬜ |
+| B-06 | 手動スナップショットからの復元（任意） | staging | ⬜ スキップ（2026-09-26、B-03と同種のため） |
+| M-01 | SNSサブスクリプション確認 | dev/staging/production共通 | ✅ 2026-09-26完了 |
+| M-02 | アラームがOK状態 | dev/staging/production共通 | ✅ 2026-09-26完了 |
+| M-04 | ログ追跡性（Logs Insights） | dev/staging/production共通 | 🔺 2026-09-26一部合格 |
+| O-01 | デプロイロールバック手順の実演 | staging | ✅ 2026-09-26完了（約3分10秒） |
+| O-02 | ロールバック後の復帰（後始末、旧O-03） | staging | ✅ 2026-09-26完了（約3分8秒） |
+| S-01 | 依存パッケージの脆弱性スキャン | CI（tomario-app） | ⬜ 2026-09-26不合格（13件検出、要修正） |
+| S-02 | コンテナイメージの脆弱性スキャン | ECR/ローカル | ⬜ 2026-09-27不合格（Critical6/High12件検出、要修正） |
+
+**注（2026-09-26）**：A-05（壊れたリビジョンの後片付け）は非機能試験の項目ではなく、A-01（デプロイサーキットブレーカー試験）の後始末作業のため、一覧から除外した。2026-07-20のA-01試験で仕込んだ壊れたrevision（`tomario-staging-task:2`）が現在も`ACTIVE`のまま未片付けであることを確認済み。片付ける場合：
+```bash
+aws ecs deregister-task-definition --task-definition tomario-staging-task:2
+```
 
 ---
 
@@ -153,17 +156,29 @@ aws cloudwatch describe-alarms --alarm-name-prefix "tomario-staging" \
 
 ## M-04：ログ追跡性（CloudWatch Logs Insights）
 
+**注意（2026-09-26修正）**：`tomario-app`にログ／例外処理の実装が無く、"ERROR"という文字列が出る保証が無い。エラーが直近に無ければ0件で確認にならないため、先に生ログを見てから能動的にエラーを起こす手順に変更（詳細は`../non-functional-test/procedures/monitoring-test-procedure.md`手順2参照）。
+
 ```bash
+# 1. 生ログの形式を確認
 aws logs start-query \
   --log-group-name "/ecs/tomario-staging" \
-  --start-time $(date -v-1H +%s 2>/dev/null || date -d '1 hour ago' +%s) \
+  --start-time $(date -v-10M +%s 2>/dev/null || date -d '10 minutes ago' +%s) \
   --end-time $(date +%s) \
-  --query-string 'fields @timestamp, @message | filter @message like /ERROR/ | sort @timestamp desc | limit 20'
-# 返るqueryIdをget-query-resultsに渡す
+  --query-string 'fields @timestamp, @message | sort @timestamp desc | limit 20'
+
+# 2. わざとエラーを起こす
+curl -s -o /dev/null -w "%{http_code}\n" "https://d14h67xxnvmsdi.cloudfront.net/api/this-does-not-exist"
+
+# 3. 再度ログを確認し、実際の形式に合わせてfilterを調整して絞り込む
+aws logs start-query \
+  --log-group-name "/ecs/tomario-staging" \
+  --start-time $(date -v-5M +%s 2>/dev/null || date -d '5 minutes ago' +%s) \
+  --end-time $(date +%s) \
+  --query-string 'fields @timestamp, @message | sort @timestamp desc | limit 20'
 aws logs get-query-results --query-id <queryId>
 ```
 
-**確認するもの**：エラー行から時刻・エンドポイント・スタックトレースまで辿れること。特定リクエストの追跡は`filter @message like /<request id>/`等で絞り込む。
+**確認するもの**：エラー行から時刻・エンドポイント・スタックトレースまで辿れること。特定リクエストの追跡は`filter @message like /<request id>/`等で絞り込む。**既知の制約**：`awslogs-multiline-pattern`未設定のため複数行スタックトレースは分断される可能性が高い（詳細は手順書側参照）。
 
 ---
 
@@ -195,7 +210,7 @@ curl -s -o /dev/null -w "%{http_code}\n" "https://d14h67xxnvmsdi.cloudfront.net/
 
 ---
 
-## O-03：ロールバック後の復帰（後始末）
+## O-02：ロールバック後の復帰（後始末、旧O-03）
 
 O-01確認完了後、最新リビジョンへ`update-service`で戻す（または「戻さず様子見」の判断を記録する）。
 
@@ -227,15 +242,6 @@ trivy image <ECRイメージURI>
 
 ---
 
-## S-06：IAM最小権限の棚卸し（任意）
+## S-06：IAM最小権限の棚卸し（任意）— スキップ（2026-09-26決定）
 
-```bash
-# 各ロールの未使用アクセス分析（IAM Access Analyzer）
-aws accessanalyzer list-findings --analyzer-arn <analyzer ARN>
-
-# または個別ロールの未使用権限確認
-aws iam generate-service-last-accessed-details --arn <role ARN>
-aws iam get-service-last-accessed-details --job-id <job ID>
-```
-
-**確認するもの**：未使用の広範な権限がない、または削減方針を記録。優先度低（職務分掌はインフラ用／デプロイ用で設計済み）。
+元々「任意」項目のため実施しない。試験項目から削除。

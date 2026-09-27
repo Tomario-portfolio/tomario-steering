@@ -15,9 +15,9 @@
 - 運用：監視・アラートが実際に発報するか、ロールバック・インフラ再構築ができるか
 - セキュリティ：既知の脆弱性が残っていないか、境界防御・証跡が有効に機能しているか
 
-**production 固有の追加検証**：production では staging に無い WAF・Security Hub・AWS Config を導入する（`security-environment-design.md`、面接期間のみ有効化。WAF は cost-stop/start に組み込む）。これらの有効性・誤検知・レイテンシ影響・ログ／アラート・緊急デタッチ手順を production（未公開期間）で追加検証する。項番は P-09 / M-07・M-08 / O-05 / S-07〜S-10。
+**production 固有の追加検証**：production では staging に無い WAF・Security Hub・AWS Config を導入する（`security-environment-design.md`、面接期間のみ有効化。WAF は cost-stop/start に組み込む）。これらの有効性・誤検知・レイテンシ影響・ログ／アラート・緊急デタッチ手順を production（未公開期間）で追加検証する。項番は P-09 / M-07・M-08 / O-03 / S-07〜S-10。
 
-> WAF Web ACL の cost-stop/start 組み込み自体（作成／関連付け／削除が壊れず回ること）は、cost-stop/start を日常運用として繰り返す中で自然に確認できるため、独立した試験項目（旧 O-04）としては置かず、`verification/env/production-only-test-items.md` の運用メモ側で扱う（2026-09-14）。
+> WAF Web ACL の cost-stop/start 組み込み自体（作成／関連付け／削除が壊れず回ること）は、cost-stop/start を日常運用として繰り返す中で自然に確認できるため、独立した試験項目（旧 O-04）としては置かず、`verification/env/production-only-test-items.md` の運用メモ側で扱う（2026-09-14）。同じ理由で、staging の cost-stop → cost-start によるインフラ再構築確認（旧 O-02）も独立した試験項目からは外した（日常運用で繰り返し確認できる内容のため、2026-09-27）。以降、運用試験の項番は O-01〜O-03（旧 O-03・O-05 をそれぞれ O-02・O-03 に繰り上げ）。
 
 ## 2. 対象環境・構成（共通前提）
 
@@ -57,7 +57,7 @@
 判定基準を満たさない項目は課題として起票し、修正後に再試験する。項番は各実施手順書（`procedures/`）と対応する。
 準備・後始末・任意ステップ（P-01/P-06/P-07、A-05、B-02/B-04/B-05/B-06、S-06 等）は手順書側に記載する。
 
-### 性能試験（P）— [procedures/scalability-test-procedure.md](procedures/scalability-test-procedure.md)
+### 性能試験（P）— [procedures/performance-test-procedure.md](procedures/performance-test-procedure.md)
 
 | 項番 | 確認項目 | 期待結果 | 目標値 | 判定基準 |
 |---|---|---|---|---|
@@ -103,8 +103,8 @@
 | 項番 | 確認項目 | 期待結果 | 目標値 | 判定基準 |
 |---|---|---|---|---|
 | O-01 | 直近の正常リビジョン（1 つ前の digest）へ手動でロールバックできる | 旧イメージで稼働に復帰、所要時間を記録 | — | ロールバック手順が完走し、旧バージョンで正常稼働・疎通 |
-| O-02 | cost-stop → cost-start でインフラを再構築できる | destroy されたリソースが Terraform で再作成される | — | cost-start 後に全リソースが揃い、CloudFront 経由で疎通する |
-| O-05 | WAF 緊急デタッチ手順（production） | 誤検知で業務影響が出た場合に Terraform を待たず WAF を切り離せる | — | CLI で Web ACL の関連付けを解除する手順が完走し、直後にアクセスが復旧する |
+| O-02 | ロールバック後の復帰（後始末） | O-01 実施後、最新リビジョンへ戻す、または様子見の判断を記録する | — | サービスが最新リビジョンで安定、または判断が記録される |
+| O-03 | WAF 緊急デタッチ手順（production） | 誤検知で業務影響が出た場合に Terraform を待たず WAF を切り離せる | — | CLI で Web ACL の関連付けを解除する手順が完走し、直後にアクセスが復旧する |
 
 ### セキュリティ試験（S）— [procedures/security-test-procedure.md](procedures/security-test-procedure.md)
 
@@ -129,7 +129,7 @@
   → A-01..A-04（障害試験・無停止デプロイ）
   → B-01..B-03（DR 訓練・PITR）
   → M-01..M-06（監視・アラート発報・ログ追跡）
-  → O-01..O-02（ロールバック・インフラ再構築）
+  → O-01..O-02（ロールバック・後始末）
   → S-01..S-05（脆弱性診断・境界防御・証跡）
 
 【production（未公開期間、WAF・Security Hub・AWS Config 有効化後）】
@@ -138,7 +138,7 @@
   → S-07（マネージドルールの有効性：攻撃ペイロードのブロック確認）
   → M-07（WAF ログ配信確認）→ M-08（BlockedRequests アラート発報）
   → P-09（WAF 有効／無効のレイテンシ差分）
-  → O-05（緊急デタッチ手順）
+  → O-03（緊急デタッチ手順）
   → S-09（Security Hub findings レビュー）→ S-10（AWS Config コンプライアンス評価）
 ```
 
