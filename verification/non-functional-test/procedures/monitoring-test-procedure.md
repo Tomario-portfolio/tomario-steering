@@ -59,18 +59,34 @@ aws cloudwatch describe-alarm-history --alarm-name tomario-staging-ecs-cpu \
 
 ### 手順 2（M-04）：ログ追跡性（CloudWatch Logs Insights）
 
+**注意（2026-09-26修正）**：`tomario-app`の`app.py`にはログ／例外処理の実装が無く、Flaskの開発用サーバー（`app.run()`）をそのまま使っている。そのため「`ERROR`という文字列が出る」保証が無く、また直近にエラーが発生していなければ`filter`しても0件で終わり確認にならない。**先に生ログの実際の形式を確認し、無ければ能動的にエラーを起こしてから絞り込む**、の順で行う。
+
 ```bash
+# 1. まず生ログの形式を確認する（フィルタなし）
 aws logs start-query \
   --log-group-name "/ecs/tomario-staging" \
-  --start-time $(date -v-1H +%s 2>/dev/null || date -d '1 hour ago' +%s) \
+  --start-time $(date -v-10M +%s 2>/dev/null || date -d '10 minutes ago' +%s) \
   --end-time $(date +%s) \
-  --query-string 'fields @timestamp, @message | filter @message like /ERROR/ | sort @timestamp desc | limit 20'
-# 返る queryId を get-query-results に渡す
+  --query-string 'fields @timestamp, @message | sort @timestamp desc | limit 20'
+# 返る queryId を get-query-results に渡して、普段のログの見た目（アクセスログのみか、エラー時に何が出るか）を確認する
+
+# 2. わざとエラーを起こす（存在しないエンドポイントを叩く等）
+curl -s -o /dev/null -w "%{http_code}\n" "https://d14h67xxnvmsdi.cloudfront.net/api/this-does-not-exist"
+
+# 3. そのエラーが実際にログへ残っているか確認する（フィルタは手順1で見た実際の形式に合わせて調整。
+#    "ERROR"という文字列が無ければステータスコードやパス文字列で絞り込む）
+aws logs start-query \
+  --log-group-name "/ecs/tomario-staging" \
+  --start-time $(date -v-5M +%s 2>/dev/null || date -d '5 minutes ago' +%s) \
+  --end-time $(date +%s) \
+  --query-string 'fields @timestamp, @message | sort @timestamp desc | limit 20'
 aws logs get-query-results --query-id <queryId>
 ```
 
 確認するもの：エラー行から時刻・エンドポイント・スタックトレースまで辿れること。
 特定リクエストの追跡は `filter @message like /<request id>/` 等で絞り込む。
+
+**既知の制約**：ECS側のログ設定（`modules/backend/ecs.tf`）に`awslogs-multiline-pattern`が未設定のため、複数行にまたがるスタックトレースはCloudWatch Logs上で1行＝1イベントに分断される。1つの`@message`でスタックトレース全体は追えない可能性が高い点に留意し、実際にそうであれば「調査に使えない」という結果として記録する（対応候補：構造化ログ導入・`@app.errorhandler`追加・`awslogs-multiline-pattern`設定）。
 
 ### 手順 3（M-07）：WAF ログの配信確認
 

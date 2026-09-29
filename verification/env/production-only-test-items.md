@@ -1,10 +1,10 @@
 # production 固有の非機能試験項目・手順
 
-`non-functional-test/`の44項目のうち、staging等と共通ではなく**production環境でのみ**実施するもの10項目（WAF・Security Hub・AWS Config導入に伴う追加検証）をまとめたもの。
+`non-functional-test/`の43項目のうち、staging等と共通ではなく**production環境でのみ**実施するもの8項目（WAF・Security Hub・AWS Config導入に伴う追加検証）をまとめたもの。全項目決着済み（詳細は[test-summary.md](../non-functional-test/test-summary.md)参照）。
 
 - 出典：`../non-functional-test/test-plan.md`・`../non-functional-test/procedures/*.md`
 - 結果の記入先：`../non-functional-test/results/*.md`（本ファイルはあくまで「production向けに手順を集約したもの」で、正式な結果報告書は従来通り`results/`側）
-- 集計日：2026-09-12
+- 最終更新：2026-09-29
 
 ## 環境固有値（production）
 
@@ -43,12 +43,12 @@ export AWS_SESSION_TOKEN=$(echo "$CREDS" | awk '{print $3}')
 | M-07 | WAFログの配信確認 | ✅ 完了 |
 | S-10 | AWS Configルールのコンプライアンス評価 | ⏭ スキップ |
 | M-08 | WAF BlockedRequestsアラートの発報 | ✅ 完了 |
-| O-05 | WAF緊急デタッチ手順 | ✅ 完了 |
+| O-03 | WAF緊急デタッチ手順（旧O-05） | ✅ 完了 |
 | P-09 | WAF有効時のレイテンシ影響 | ⏭ スキップ |
 
 ---
 
-> **旧O-04（WAF Web ACLのcost-stop/start組み込み）について**：2026-09-14、非機能試験としては削除した（`test-plan.md`参照）。cost-stop/startを日常運用として繰り返す中で自然に確認できる内容のため、独立した試験項目にはしない。参考として背景だけ残す：ALB用WAF(`module "waf_alb"`)は`envs/prod/production/backend/main.tf`内にあり、backendコンポーネントごとcost-stopでdestroyされ、cost-startのたびに作り直される。CloudFront用WAFはfrontendコンポーネント側にあり、cost-stopの対象外で残り続ける。
+> **旧O-04（WAF Web ACLのcost-stop/start組み込み）について**：2026-09-14、非機能試験としては削除した（`test-plan.md`参照）。cost-stop/startを日常運用として繰り返す中で自然に確認できる内容のため、独立した試験項目にはしない。参考として背景だけ残す：ALB用WAF(`module "waf_alb"`)は`envs/prod/production/backend/main.tf`内にあり、backendコンポーネントごとcost-stopでdestroyされ、cost-startのたびに作り直される。CloudFront用WAFはfrontendコンポーネント側にあり、cost-stopの対象外で残り続ける。同じ理由で、staging側のcost-stop→cost-startによるインフラ再構築確認（旧O-02）も2026-09-27に試験項目から除外し、以降O-03・O-05をそれぞれO-02・O-03に繰り上げた。
 
 ## S-07：WAFマネージドルールの有効性 ✅合格
 
@@ -156,7 +156,7 @@ aws configservice describe-compliance-by-config-rule --region ap-northeast-1
 
 ---
 
-## O-05：WAF緊急デタッチ手順 ⬜未着手
+## O-03：WAF緊急デタッチ手順（旧O-05） ✅完了
 
 **手順書の誤りを訂正(2026-09-16)**：当初`wafv2 associate-web-acl`/`disassociate-web-acl`/`get-web-acl-for-resource`を使う手順にしていたが、これらのAPIは**REGIONALスコープ（ALB等）専用**で、CLOUDFRONTスコープのWebACLには使えないと実機で判明（`WAFInvalidParameterException: The ARN isn't valid`）。実行を試みたが、disassociate側も同じ理由で失敗しており、本番のWAFは変更されず保護されたままだったことを確認済み（実害なし）。CloudFrontはWebACLの関連付けを`distribution config`自体の`WebACLId`フィールドとして持つため、config全体を読み直して書き換える方式が正しい。
 
@@ -176,7 +176,7 @@ jq '.DistributionConfig.WebACLId = ""' /tmp/dist-config.json | jq '.Distribution
 date
 aws cloudfront update-distribution --id $DIST_ID --distribution-config file:///tmp/dist-config-detached.json --if-match $ETAG
 
-# 4. 全世界のエッジロケーションへの反映を待つ（数分〜十数分想定。O-05の復旧所要時間の本体）
+# 4. 全世界のエッジロケーションへの反映を待つ（数分〜十数分想定。O-03の復旧所要時間の本体）
 aws cloudfront wait distribution-deployed --id $DIST_ID
 date
 
@@ -204,9 +204,9 @@ date
 
 ## P-09：WAF有効時のレイテンシ影響 ⏭スキップ
 
-**本来の手順**：O-05のデタッチ手順を使い、WAF有効時／無効時それぞれでk6を実行してp(50)/p(95)を比較する（悪化幅の目安 < +50ms）。
+**本来の手順**：O-03（旧O-05）のデタッチ手順を使い、WAF有効時／無効時それぞれでk6を実行してp(50)/p(95)を比較する（悪化幅の目安 < +50ms）。
 
 **スキップ理由(2026-09-16)**：
 1. CloudFront＋WAFのエッジ評価はレイテンシへの影響が小さいことがアーキテクチャ上よく知られており、実測しても新しい知見が得られにくい
 2. production は非公開期間で実トラフィックが無く、この負荷試験自体もっともらしい数値が取れるか怪しい（S-07/M-08のようなセキュリティ機能の正しさを確認する試験とは価値の質が異なる）
-3. 既存の`loadtest.js`はstaging専用（URL・ログイン処理がstaging前提）で流用できず、production用に未認証の`/api/rooms`だけを叩く軽量版を新規作成し、O-05相当のデタッチ/再アタッチ（1往復3〜4分）を2回実施する工数に対して得られる情報が薄いと判断
+3. 既存の`loadtest.js`はstaging専用（URL・ログイン処理がstaging前提）で流用できず、production用に未認証の`/api/rooms`だけを叩く軽量版を新規作成し、O-03相当（旧O-05）のデタッチ/再アタッチ（1往復3〜4分）を2回実施する工数に対して得られる情報が薄いと判断

@@ -12,18 +12,18 @@ prod 同等構成の staging 環境で、性能・可用性・信頼性・復旧
 | ファイル | 内容 |
 |---|---|
 | [test-plan.md](test-plan.md) | 非機能試験計画書。試験方針・対象環境・確認項目一覧（実施前に定義） |
-| [test-summary.md](test-summary.md) | 実施サマリ。全 44 項目の件数・実施済み／一部／未実施の一覧 |
+| [test-summary.md](test-summary.md) | 実施サマリ。全 43 項目の合格・スキップの一覧 |
 | [procedures/](procedures/) | 試験種別ごとの実施手順書（目的・前提条件・試験項目一覧・詳細手順） |
 | [results/](results/) | 試験種別ごとの結果報告書。手順書の各項番に対応する |
 | [evidence/](evidence/) | スクリーンショット・ログ等のエビデンス |
 
-`procedures/` `results/` `evidence/` は試験種別ごとに同じ名前で対応する（例：`scalability-test-procedure.md` ⇔ `scalability-test-result.md` ⇔ `evidence/scalability/`）。
+`procedures/` `results/` `evidence/` は試験種別ごとに同じ名前で対応する（例：`performance-test-procedure.md` ⇔ `performance-test-result.md` ⇔ `evidence/performance/`）。
 
 ### 試験種別と対応ドキュメント
 
 | 試験種別 | 手順書 | 結果報告書 |
 |---|---|---|
-| スケーラビリティ（性能・負荷・Auto Scaling・目標スループット） | [scalability-test-procedure.md](procedures/scalability-test-procedure.md) | [scalability-test-result.md](results/scalability-test-result.md) |
+| スケーラビリティ（性能・負荷・Auto Scaling・目標スループット） | [performance-test-procedure.md](procedures/performance-test-procedure.md) | [performance-test-result.md](results/performance-test-result.md) |
 | 可用性・信頼性（サーキットブレーカー・タスク強制停止・データ整合性・無停止デプロイ） | [availability-test-procedure.md](procedures/availability-test-procedure.md) | [availability-test-result.md](results/availability-test-result.md) |
 | バックアップ・復旧（DR 訓練・PITR） | [backup-test-procedure.md](procedures/backup-test-procedure.md) | [backup-test-result.md](results/backup-test-result.md) |
 | 監視（アラート発報・ログ追跡性） | [monitoring-test-procedure.md](procedures/monitoring-test-procedure.md) | [monitoring-test-result.md](results/monitoring-test-result.md) |
@@ -32,16 +32,18 @@ prod 同等構成の staging 環境で、性能・可用性・信頼性・復旧
 
 ## 結果サマリ
 
-| 試験種別 | 対象項番 | ステータス | 実施日 |
-|---|---|---|---|
-| スケーラビリティ | P-00・P-03〜P-05・P-08・P-09 | 🔺 一部実施（P-03 / P-04 / P-05 合格、P-00 / P-08 未実施、P-07 未達、P-09 は WAF 導入後） | 2026-07-20 |
-| 可用性・信頼性 | A-01〜A-05 | 🔺 一部実施（A-01 / A-02 / A-03 合格、A-04 / A-05 未実施） | 2026-07-20 |
-| バックアップ・復旧 | B-01〜B-06 | ✅ 実施済み・検証項目（B-01 / B-03 / B-04）全合格（B-06 任意未実施） | 2026-07-21 |
-| 監視 | M-01〜M-08 | 🔺 一部実施（M-03 手動発火のみ。M-07 / M-08 は WAF 導入後、他は未実施） | 2026-09-03 |
-| 運用オペレーション | O-01・O-02・O-03・O-05 | 🔺 一部実施（O-02 を運用で実施、試験記録は未。O-05 は WAF 導入後、O-01 未実施） | — |
-| セキュリティ | S-01〜S-10 | 🔺 一部実施（S-04 / S-05 の一部のみ。S-07〜S-10 は WAF・Security Hub・Config 導入後、他は未実施） | — |
+**全43項目が決着済み**（合格 36件、意図的スキップ 7件）。詳細は [test-summary.md](test-summary.md) を参照。
 
-> **production 固有の追加検証**（WAF・Security Hub・AWS Config 導入に伴う）：P-09（WAF レイテンシ影響）／M-07・M-08（WAF ログ・アラート）／O-05（WAF 緊急デタッチ）／S-07〜S-10（WAF ルール有効性・誤検知・Security Hub / Config レビュー）。詳細は各手順書と `test-plan.md` を参照。WAF Web ACL の cost-stop/start 組み込み自体（旧 O-04）は日常運用で確認できるため独立した試験項目としては置いていない。
+| 試験種別 | 対象項番 | ステータス |
+|---|---|---|
+| 性能 | P-00〜P-09 | ✅ 全項目決着（P-09はスキップ） |
+| 可用性・信頼性 | A-01〜A-05 | ✅ 全項目合格 |
+| バックアップ・復旧 | B-01〜B-06 | ✅ 全項目決着（B-06はスキップ） |
+| 監視 | M-01〜M-08 | ✅ 全項目合格 |
+| 運用オペレーション | O-01〜O-03 | ✅ 全項目合格 |
+| セキュリティ | S-01〜S-10 | ✅ 全項目決着（S-03/S-06/S-08/S-10はスキップ） |
+
+> **production 固有の追加検証**（WAF・Security Hub・AWS Config 導入に伴う）：P-09（WAF レイテンシ影響）／M-07・M-08（WAF ログ・アラート）／O-03（WAF 緊急デタッチ）／S-07〜S-10（WAF ルール有効性・誤検知・Security Hub / Config レビュー）。詳細な実行手順・実測ログは [../env/production-only-test-items.md](../env/production-only-test-items.md) を参照。WAF Web ACL の cost-stop/start 組み込み自体、および staging の cost-stop → cost-start によるインフラ再構築確認は、いずれも日常運用で確認できるため独立した試験項目としては置いていない。
 
 ## 用語について
 

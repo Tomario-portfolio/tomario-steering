@@ -1,7 +1,7 @@
 # 非機能試験（スケーラビリティ）実施手順書
 
 対応する計画：[../test-plan.md](../test-plan.md) の性能試験（P-00・P-03〜P-05・P-08・P-09）
-対応する結果報告書：[../results/scalability-test-result.md](../results/scalability-test-result.md)
+対応する結果報告書：[../results/performance-test-result.md](../results/performance-test-result.md)
 
 ## 試験実施目的
 
@@ -129,7 +129,7 @@ k6 run loadtest-throughput.js
 # 1) WAF を CloudFront に関連付けた状態で loadtest.js を実行 → k6 サマリの p(50)/p(95) を記録
 k6 run loadtest.js   # BASE_URL は production の CloudFront
 
-# 2) WAF の関連付けを一時的に外す（O-05 と同じ手順）
+# 2) WAF の関連付けを一時的に外す（O-03 と同じ手順、旧O-05）
 WEBACL_ARN=$(aws wafv2 list-web-acls --scope CLOUDFRONT --region us-east-1 \
   --query "WebACLs[?Name=='<web acl name>'].ARN" --output text)
 DIST_ID=<CloudFront Distribution ID>
@@ -155,7 +155,7 @@ P-03/P-04 観察 → P-05 評価 → P-08（目標スループット） → P-06
 
 ## 実施後の記録
 
-- 結果を [../results/scalability-test-result.md](../results/scalability-test-result.md) の結果表へ転記する
+- 結果を [../results/performance-test-result.md](../results/performance-test-result.md) の結果表へ転記する
 - p(95) 実測値と P-08 の実効 rps をもとに、非機能要件定義書へレスポンスタイム目標値（例：定常時 p95 < 500ms）と目標 rps を追記し、`test-plan.md` の P-08 目標値を確定する
-- `loadtest.js`・`loadtest-throughput.js`・k6 サマリ・スケーリングアクティビティ一覧を `../evidence/scalability/` に格納する
+- `loadtest.js`・`loadtest-throughput.js`・k6 サマリ・スケーリングアクティビティ一覧を `../evidence/performance/` に格納する
 - **P-06（RDS を db.t3.micro へ戻した）を必ずチェックする**
