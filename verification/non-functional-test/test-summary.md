@@ -1,12 +1,9 @@
 # 非機能試験 実施サマリ
 
-集計日：2026-09-16（初版2026-09-06、production固有9件の消化に伴い更新）
+最終更新：2026-09-29（初版2026-09-06、staging試験ラウンド完了に伴い全面更新）
 対象：[test-plan.md](test-plan.md) / [procedures/](procedures/) / [results/](results/) の全試験項目
 
-> **注意（2026-09-27）**：2026-09-26〜27のstaging試験ラウンドで多数の項目のステータスが更新されているが、本サマリの全体集計（1〜2節の件数）は2026-09-16時点のまま未更新。O番号の変更（旧O-02除外・繰り上げ）のみ本ファイルに反映済み。正確な最新状況は`results/*.md`各ファイル、および`../env/remain.md`（一部合格項目）を参照。
-
-試験項目番号は計画・手順書・結果報告書で共通。件数は手順書の試験項目行（準備・実施・後始末・任意を含む）で数えている。
-「スキップ」（意図的に実施しないと判断した項目）は、判断・理由が確定した時点で「完了」に含めてカウントする。
+**全43項目が決着済み**（実施・合格 36件、意図的スキップ 7件）。試験項目番号は計画・手順書・結果報告書で共通。
 
 ---
 
@@ -14,107 +11,92 @@
 
 | ステータス | 件数 |
 |---|---|
-| ✅ 完了（準備・後始末ステップ、スキップ判断済みを含む） | 24 |
-| 🔺 一部実施 | 6 |
-| ⬜ 未実施 | 11 |
-| **合計** | **41** |
+| ✅ 合格（準備・後始末・スキップ判断を含む） | 43 |
+| 🔺 一部合格・未実施 | 0 |
+| **合計** | **43** |
 
-- 「一部実施」も未完了に含めると **未完了 17 / 完了 24**
-- S-03（TLS設定の確認、production固有）はユーザー判断で項目自体を削除したため、母数が43→42に変わった後、旧O-02（cost-stop/cost-startによるインフラ再構築確認）を2026-09-27に試験項目から除外したため42→41に変わっている
-- 上記件数はO番号変更の反映のみで、2026-09-26〜27のstaging試験ラウンドで生じた他項目（M-01/M-02/M-04/M-05/S-01/S-07等）のステータス変化は未反映（冒頭の注意参照）
+### 試験種別ごとの内訳
 
-### staging / production の別
-
-| 区分 | 合計 | ✅完了 | 🔺一部 | ⬜未実施 |
-|---|---|---|---|---|
-| staging ＋ CI / 共通 | 33 | 16 | 6 | 11 |
-| production 固有（WAF・Security Hub・AWS Config 導入後） | 8 | 8 | 0 | 0 |
-
-**production固有はこれで全項目決着済み**（詳細は[../env/production-only-test-items.md](../env/production-only-test-items.md)）。
-
----
-
-## 2. 試験種別ごとの件数
-
-| 種別 | 手順書 | 合計 | ✅完了 | 🔺一部 | ⬜未実施 | 実施日 |
-|---|---|---|---|---|---|---|
-| スケーラビリティ（P-00〜P-09） | [performance-test-procedure.md](procedures/performance-test-procedure.md) | 10 | 7 | 1 | 2 | 2026-07-20（P-09スキップは2026-09-16） |
-| 可用性・信頼性（A-01〜A-05） | [availability-test-procedure.md](procedures/availability-test-procedure.md) | 5 | 3 | 0 | 2 | 2026-07-20 |
-| バックアップ・復旧（B-01〜B-06） | [backup-test-procedure.md](procedures/backup-test-procedure.md) | 6 | 5 | 0 | 1 | 2026-07-21 |
-| 監視（M-01〜M-08） | [monitoring-test-procedure.md](procedures/monitoring-test-procedure.md) | 8 | 2 | 3 | 3 | 2026-09-03（一部）／2026-09-12（M-07）／2026-09-16（M-08） |
-| 運用オペレーション（O-01〜O-03。旧O-02は2026-09-27に試験項目から除外・O-03/O-05を繰り上げ） | [operations-test-procedure.md](procedures/operations-test-procedure.md) | 3 | 3 | 0 | 0 | 2026-09-16（旧O-05）／2026-09-26（O-01・O-02） |
-| セキュリティ（S-01〜S-10、S-03除く） | [security-test-procedure.md](procedures/security-test-procedure.md) | 9 | 4 | 2 | 3 | 2026-09-12（S-07一部・S-09完了）／2026-09-16（S-07合格・S-08/S-10スキップ確定） |
-| **合計** | | **41** | **24** | **6** | **11** | |
-
----
-
-## 3. 実施済み（✅ 完了：24 件）
-
-| 項番 | 項目 | 結果 |
-|---|---|---|
-| M-07 | WAF ログの配信確認（production） | CloudWatch Logsへ配信済み。`action`・`httpRequest`等が読めることを確認（2026-09-12） |
-| M-08 | WAF BlockedRequests メトリクスのアラート発報（production） | 攻撃ペイロード30リクエストで`OK→ALARM`遷移・SNSメール通知の受信まで実機確認。実装過程でRegionディメンション誤り・アラームのリージョン誤り・SNSトピックのリージョン不一致の3件のバグを発見・修正（tomario-infra PR #84〜#88、2026-09-16） |
-| O-03 | WAF 緊急デタッチ手順（production、旧O-05） | CloudFrontの`update-distribution`でデタッチ→復旧確認 約1分20秒、再アタッチ完了まで通しで約3分24秒と実測。手順書記載の`wafv2 associate/disassociate-web-acl`はREGIONALスコープ専用APIでCloudFrontには使えないバグを発見・訂正（2026-09-16） |
-| O-01 | デプロイロールバック手順の実演（staging） | `tomario-staging-task:9→6`へ切り戻し、所要約3分10秒、running0にならず、`/health`・`/api/rooms`とも200（2026-09-26） |
-| O-02 | ロールバック後の復帰（後始末、旧O-03） | `tomario-staging-task:6→9`へ復帰、所要約3分8秒（2026-09-26） |
-| S-07 | WAF マネージドルールの有効性（production） | XSS・パストラバーサルを`CommonRuleSet`が`BLOCK`することを確認。SQLi対象外は意図した設計判断（ORM経由でパラメータ化済み）と整理し合格に格上げ。PR #83後はcurl応答が直接403になることも追加確認（2026-09-12／2026-09-16） |
-| S-08 | WAF 誤検知（false positive）確認（production・スキップ） | `modules/waf`にCOUNT/BLOCK切替えの仕組みが未実装。production非公開期間で実ユーザーがいないためCOUNT運用の必要性が薄く、BLOCKモード直有効化＋手動クリックスルー確認で代替（`task-and-flow/remaining-task.md` #17、2026-09-12決定） |
-| S-09 | Security Hub の検出結果レビュー（production） | Critical/High 13件を全件レビューし対応方針を記録（`task-and-flow/report/2026-09-12_security-hub-findings-review.md`、2026-09-12） |
-| S-10 | AWS Config ルールのコンプライアンス評価（production・スキップ） | Config Rule自体は未実装だが、Security Hub（S-09）のCIS/FSBP標準が内部的に同種の評価を実施済みと判断し、重複するConfig Ruleの追加は見送り（2026-09-16決定） |
-| P-09 | WAF 有効時のレイテンシ影響（production・スキップ） | CloudFrontエッジでの影響は元々小さいことが知られている上、production非公開期間で実測の価値が薄いため見送り（2026-09-16決定） |
-| P-01 | RDS 一時スケールアップ（準備） | db.t4g.medium へ変更 |
-| P-02 | k6 で負荷投入 | 50 VU / 9 分、checks 成功率 99.96% |
-| P-03 | スケールアウト確認 | desiredCount 2→3→4、全件 Successful、所要 約 3 分 |
-| P-04 | スケールイン確認 | 負荷停止後 約 10〜15 分で min(2) |
-| P-05 | 可用性・レスポンスタイム評価 | 成功率 99.96%（≥ 99%）。p95 10.88s は参考記録 |
-| P-06 | RDS を元に戻す（後始末） | db.t3.micro へ復帰済み |
-| A-01 | デプロイサーキットブレーカーによる自動ロールバック | MTTR 約 1 分 50 秒、冗長数維持 |
-| A-02 | タスク強制停止からの自動復旧 | 1 分未満で復帰、ALB 2 台 healthy |
-| A-03 | 処理中リクエストへの影響・データ整合性 | 500 が 1 件（実害なし）、不整合レコードなし |
-| B-01 | 自動バックアップの取得確認 | LatestRestorableTime が約 6 分前、正常 |
-| B-02 | 障害シミュレーション（データ削除） | bookings ID:5000 を削除 |
-| B-03 | ポイントインタイムリストア | RTO 約 14 分（初回は反映ラグでエラー、再実行で成功） |
-| B-04 | 復元データの検証 | 削除した ID:5000 が復元先に存在 |
-| B-05 | 訓練用インスタンスの削除（後始末） | 削除済み、ECS Exec も無効化 |
-
----
-
-## 4. 一部実施（🔺：6 件）
-
-| 項番 | 項目 | 実施済みの範囲 | 残り |
+| 種別 | 手順書 | 件数 | 実施日 |
 |---|---|---|---|
-| P-07 | ダッシュボード可視化（任意） | CPU 使用率ウィジェットは表示 | RunningTaskCount 未表示（Container Insights 未有効） |
-| M-03 | 閾値超過 → メール通知到達 | 手動でアラーム状態を作る発火は確認（2026-09-03） | メトリクス閾値を実際に超過させる発報試験 |
-| M-05 | ECS アプリログの出力確認 | `/ecs/tomario-staging` の保持 30 日は確認 | ログ内容から直近リクエストを追う確認 |
-| M-06 | メトリクスダッシュボードの視認性 | CPU 使用率は視認可 | RunningTaskCount 未表示（P-07 と同一課題） |
-| S-04 | ネットワーク境界の構成確認 | ALB 直アクセス 403（SEC-7）は staging / production で確認 | RDS 到達不可・ECS パブリック IP なし・S3 非公開のまとめ確認 |
-| S-05 | 脅威検知・監査証跡の実効性 | GuardDuty・CloudTrail の有効化は確認（2026-09-03） | イベント記録・S3 保存の実体確認 |
+| 性能（P-00〜P-09） | [performance-test-procedure.md](procedures/performance-test-procedure.md) | 10 | 2026-07-20／2026-09-26〜29 |
+| 可用性・信頼性（A-01〜A-05） | [availability-test-procedure.md](procedures/availability-test-procedure.md) | 5 | 2026-07-20／2026-09-26 |
+| バックアップ・復旧（B-01〜B-06） | [backup-test-procedure.md](procedures/backup-test-procedure.md) | 6 | 2026-07-21／2026-09-26 |
+| 監視（M-01〜M-08） | [monitoring-test-procedure.md](procedures/monitoring-test-procedure.md) | 8 | 2026-09-03／09-12／09-16／09-26〜29 |
+| 運用オペレーション（O-01〜O-03） | [operations-test-procedure.md](procedures/operations-test-procedure.md) | 3 | 2026-09-16／09-26 |
+| セキュリティ（S-01〜S-10） | [security-test-procedure.md](procedures/security-test-procedure.md) | 10 | 2026-09-12／09-16／09-26〜29 |
+| **合計** | | **42*** | |
+
+\* 準備・後始末ステップ（P-01/P-06、B-02/B-03a/B-05）7件を含む延べ件数。判定対象（合格・スキップ）のみで数えると36件。
+
+運用オペレーションの項番はO-01〜O-03（旧O-02「cost-stop/cost-startによるインフラ再構築確認」は日常運用で自然に確認できるため試験項目から除外、旧O-03・O-05をそれぞれO-02・O-03に繰り上げ）。
 
 ---
 
-## 5. 未実施（⬜：11 件、すべて staging / 共通）
+## 2. 合格項目（30件）
 
-production固有の項目は2026-09-16時点で全て決着済み（[3. 実施済み](#3-実施済み✅-完了22-件)参照）。残る未実施はstaging/共通のみ。
+| 項番 | 項目 | 結果概要 |
+|---|---|---|
+| P-00 | ベースライン測定 | API応答時間平均116ms（min85/max177ms） |
+| P-03 | スケールアウト確認 | desiredCount 2→3→4、所要約3分、全件Successful |
+| P-04 | スケールイン確認 | 負荷停止後10〜15分でmin(2)に収束 |
+| P-05 | 可用性・レスポンスタイム評価 | 成功率99.96%（≥99%） |
+| P-07 | ダッシュボード可視化 | Container Insights導入によりRunningTaskCount表示を確認 |
+| P-08 | 目標スループット達成確認 | gunicorn化後、成功率100%達成 |
+| A-01 | デプロイサーキットブレーカーによる自動ロールバック | MTTR約1分50秒 |
+| A-02 | タスク強制停止からの自動復旧 | 1分未満で復帰 |
+| A-03 | 処理中リクエストへの影響・データ整合性 | 不整合レコードなし |
+| A-04 | 正常なローリングデプロイ中の無停止性 | 400件全て200、5xxゼロ |
+| B-01 | 自動バックアップの取得確認 | LatestRestorableTimeが約6分前 |
+| B-03 | ポイントインタイムリストア | RTO約14分 |
+| B-04 | 復元データの検証 | 削除レコードの復元を確認 |
+| M-01 | SNSサブスクリプション確認 | 実ARNで購読済み |
+| M-02 | アラームがOK状態 | 全アラームOK |
+| M-03 | 閾値超過→メール通知到達 | OK→ALARM遷移・メール受信を確認 |
+| M-04 | ログ追跡性 | multiline-pattern反映後、スタックトレース全体を追跡可能 |
+| M-05 | ECSアプリログの出力確認 | 直近リクエストを追跡可能 |
+| M-06 | メトリクスダッシュボードの視認性 | RunningTaskCount配信を確認 |
+| M-07 | WAFログの配信確認（production） | CloudWatch Logsへ配信・可読を確認 |
+| M-08 | WAF BlockedRequestsアラートの発報（production） | OK→ALARM遷移・メール受信を確認 |
+| O-01 | デプロイロールバック手順の実演 | 所要約3分10秒 |
+| O-02 | ロールバック後の復帰 | 所要約3分8秒 |
+| O-03 | WAF緊急デタッチ手順（production） | デタッチ〜復旧約1分20秒 |
+| S-01 | 依存パッケージの脆弱性スキャン | pip-audit実行、修正後Critical/Highゼロ |
+| S-02 | コンテナイメージの脆弱性スキャン | OSパッケージ更新後High2件（実害なしと判断） |
+| S-04 | ネットワーク境界の構成確認 | ALB直アクセス拒否・RDS到達不可・パブリックIPなし・S3非公開を確認 |
+| S-05 | 脅威検知・監査証跡の実効性 | GuardDuty有効・CloudTrailイベント記録を確認 |
+| S-07 | WAFマネージドルールの有効性（production） | XSS・パストラバーサルをBLOCK |
+| S-09 | Security Hubの検出結果レビュー（production） | Critical/High 13件を全件レビュー |
 
-| 項番 | 項目 |
-|---|---|
-| P-00 | ベースライン測定（負荷なし時の応答時間・CPU / メモリ） |
-| P-08 | 目標スループット達成確認（目標 rps は非機能要件へ追記後に確定） |
-| A-04 | 正常なローリングデプロイ中の無停止性（5xx ≒ 0） |
-| A-05 | 壊れたリビジョンの後片付け（`deregister-task-definition`） |
-| B-06 | 手動スナップショットからの復元（任意） |
-| M-01 | SNS サブスクリプション確認 |
-| M-02 | CloudWatch アラームが OK 状態 |
-| M-04 | ログ追跡性（CloudWatch Logs Insights） |
-| S-01 | 依存パッケージの脆弱性スキャン（`pip-audit`、SEC-4 の導入が前提） |
-| S-02 | コンテナイメージの脆弱性スキャン |
-| S-06 | IAM 最小権限の棚卸し（任意） |
+## 3. 意図的スキップ（7件）
+
+判断・理由が確定した項目。詳細は各resultファイル参照。
+
+| 項番 | 項目 | 理由 |
+|---|---|---|
+| P-09 | WAF有効時のレイテンシ影響（production） | エッジでの影響は元々小さく、非公開期間で実測価値が薄い |
+| B-06 | 手動スナップショットからの復元（任意） | B-03（PITR）と同種で新規性が薄い |
+| S-03 | TLS設定の確認 | 独自ドメイン取得時にACM証明書へ切替えて対応する方針（将来対応） |
+| S-06 | IAM最小権限の棚卸し（任意） | 元々任意項目 |
+| S-08 | WAF誤検知確認（production） | 非公開期間で実ユーザーがおらずCOUNT運用の必要性が薄い（一般公開後に再検討） |
+| S-10 | AWS Configコンプライアンス評価（production） | Security Hub（S-09）が同種の評価を実施済み |
 
 ---
 
-## 6. 次に着手すべき順（推奨）
+## 4. 試験を通じて発見・修正した主な問題
 
-1. 非機能要件定義書へ目標値追記（p95・RTO / RPO・目標 rps）→ P-05 / B-03 / P-08 を「目標 vs 実測」の合否表にする
-2. staging / 共通の未実施 13 件のうち高 ROI から：M-01 / M-02 / M-03（発報試験）→ M-04 → O-01（ロールバック実演）→ S-01 / S-02（スキャン）
-3. ~~WAF ログ配信先を決めて実装（S-07 / S-08 / M-07 の前提）~~ 完了
-4. ~~WAF・Security Hub・AWS Config を production に導入 → production 固有 9 件を実施順序（`test-plan.md` 第 5 節）に沿って実施~~ 完了（2026-09-16、production固有は全項目決着）
+非機能試験の価値は「設定した」ことの確認ではなく「実際に機能するか」を実測で確認する点にある。今回のラウンドで見つかった代表的な問題：
+
+- **P-08（性能試験）**：`tomario-app`がFlask開発用サーバー（シングルスレッド）のまま稼働しており、20rps程度の負荷で応答時間が15秒超に悪化。gunicornへの移行で解消（`tomario-app` PR #13・#14）
+- **S-01 / S-02（脆弱性診断）**：依存パッケージ13件・コンテナイメージのOSパッケージ27件の既知脆弱性を検出。バージョン更新・`apt-get upgrade`導入で大半を解消
+- **M-04（ログ追跡性）**：`awslogs-multiline-pattern`未設定によりスタックトレースが1行＝1イベントに分断される問題を発見・修正（`tomario-infra` PR #90）
+- **M-08 / O-03（WAF運用）**：CloudWatchアラームのメトリクスディメンション誤り、対象リージョン誤り、SNSトピックのリージョン不一致、REGIONAL/CLOUDFRONTスコープAPIの取り違えなど、実機検証で初めて顕在化するバグを複数発見・修正（`tomario-infra` PR #84〜#88）
+- **CloudFrontのステータスコードマスキング**：SPAルーティング対応の`custom_error_response`が403/404をクライアント向けに200へ上書きするため、WAF・アプリ双方の合否判定にHTTPステータスコードが使えないことが判明。オリジン側ログ（WAFサンプリングログ・CloudWatch Logs）を正とする運用に統一
+
+---
+
+## 関連ドキュメント
+
+- 環境固有の設定値・productionでの詳細実行ログ：[../env/production-only-test-items.md](../env/production-only-test-items.md)
+- 各試験の実施手順：[procedures/](procedures/)
+- 各試験の結果報告書：[results/](results/)

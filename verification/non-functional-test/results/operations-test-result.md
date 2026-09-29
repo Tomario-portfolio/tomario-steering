@@ -17,7 +17,7 @@
 |---|---|---|---|
 | O-01 | デプロイロールバック手順の実演 | **合格**（2026-09-26）。`tomario-staging-task:9→6`へ`update-service --force-new-deployment`→`wait services-stable`。所要**約3分10秒**（14:20:36開始→14:23:46完了）、`running`が0になる瞬間なし、`rolloutState:COMPLETED`、`/health`・`/api/rooms`とも200 | ✅ |
 | O-02 | ロールバック後の復帰（後始末） | **合格**（2026-09-26）。O-01実施後、`tomario-staging-task:6→9`へ復帰。所要**約3分8秒**（14:24:22開始→14:27:30完了）、`rolloutState:COMPLETED`、`/health`は200 | ✅ 後始末 |
-| O-03 | WAF 緊急デタッチ手順（production） | **合格**。CloudFrontの`update-distribution`でデタッチ→復旧確認 約1分20秒、再アタッチ完了まで通しで約3分24秒と実測。手順書記載の`wafv2 associate/disassociate-web-acl`はREGIONALスコープ専用APIでCloudFrontには使えないバグを発見・訂正（2026-09-16、`test-summary.md`と同期） | ✅ |
+| O-03 | WAF 緊急デタッチ手順（production） | **合格**。CloudFrontの`update-distribution`でデタッチ→復旧確認 約1分20秒、再アタッチ完了まで通しで約3分24秒と実測。手順書記載の`wafv2 associate/disassociate-web-acl`はREGIONALスコープ専用APIでCloudFrontには使えないバグを発見・訂正（2026-09-16） | ✅ |
 
 ## 補足
 - （運用メモ、旧O-02）cost-stop の destroy 連鎖で CloudFront も再作成対象になり、cost-start のたびに CloudFront の新規作成に 20〜30 分かかることがある（`tomario-workspace/reference/test/staging/output.md` に記録あり）

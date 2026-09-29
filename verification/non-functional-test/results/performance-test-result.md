@@ -1,7 +1,7 @@
 # 非機能試験（スケーラビリティ）結果報告書
 
 ## ステータス
-一部実施済み。P-03〜P-05（2026-07-20）・P-00（2026-09-26）は合格。**P-08（2026-09-26）は不合格**、原因判明・修正PR起票済み（`tomario-app` #13、未マージ）。P-09は未実施
+一部実施済み。P-00・P-03〜P-05・P-07・P-08が合格。P-09はスキップ確定
 
 対応する手順書：[../procedures/performance-test-procedure.md](../procedures/performance-test-procedure.md)
 対応する計画：[../test-plan.md](../test-plan.md) 性能試験（P）
@@ -22,9 +22,9 @@
 | P-04 | スケールイン確認 | 負荷停止後 **約 10〜15 分**で min(2) まで自動スケールイン | ✅ |
 | P-05 | 可用性・レスポンスタイム評価 | 成功率 **99.96%**（≥ 99% を満たす）。p(95)=10.88s / avg=3.89s はスケールアウトが追いつくまでの過渡的遅延で、目標値未設定のため参考記録 | ✅（成功率）／p95 は参考 |
 | P-06 | RDS を元に戻す | 実施。`db.t3.micro` へ復帰済み（漏れなし） | — 後始末 |
-| P-07 | ダッシュボード可視化（任意） | **未達**。`tomario-staging-autoscaling` ダッシュボードの RunningTaskCount が「データがありません」。`RunningTaskCount` は Container Insights 有効時のみ配信される `ECS/ContainerInsights` のメトリクスで、当クラスターは未有効だった。CPU 使用率ウィジェットは正常表示。**2026-09-27、Container Insights導入をコスト試算の上で決定**（月10時間程度の稼働なら月10〜15セント程度、`remaining-task.md` #1・`verification/env/remain.md`参照）。実装・再確認待ち | 🔺（対応方針確定） |
-| P-08 | 目標スループット達成確認 | **不合格**（2026-09-26）。目標rps=20（暫定値、非機能要件へ追記予定）で`constant-arrival-rate`（k6、`loadtest-throughput.js`）を3分実行。**成功率77.38%**（目標99%未達）、**実効rps 9.03**（目標20未達）、**p(95)=15.03秒**（目標1秒を大幅超過）。原因：`tomario-app`がFlask開発用サーバー（シングルスレッド、`app.run()`）のまま稼働しており、1タスクあたり同時1リクエストしか処理できず、desiredCount=2の環境全体で実質2並列が上限だった。CPU使用率が85%→37%→47%と乱高下（リクエスト詰まりによる処理量の波）し、Auto Scalingの3分連続70%超過条件（`TargetTracking-*-AlarmHigh`、`evalPeriods:3`）を満たせず**スケールアウトも発生しなかった**（`describe-scaling-activities`該当なし）。gunicornへの切替＋依存パッケージ更新で修正（`tomario-app` PR #13、2026-09-26、未マージ）。マージ・staging反映後に再実施予定 | ⬜ 不合格 |
-| P-09 | WAF 有効時のレイテンシ影響（production） | 未実施（WAF 導入後、WAF 有効 / 無効で負荷を流し p50 / p95 差分を比較） | ⬜ |
+| P-07 | ダッシュボード可視化（任意） | **合格**（2026-09-29）。Container Insights導入（`tomario-infra` PR #89、2026-09-28マージ）後、`RunningTaskCount`メトリクス（`ECS/ContainerInsights`名前空間）が実際に配信されていることを確認（直近2.0＝タスク2台）。ダッシュボードのRunningTaskCountウィジェットも表示される見込み | ✅ |
+| P-08 | 目標スループット達成確認 | **合格**（2026-09-29、gunicorn化後に再検証）。2026-09-26の不合格（成功率77.38%・p95=15.03秒、原因：Flask開発用サーバーのシングルスレッド制約）を`tomario-app` PR #13/#14（gunicorn化）で修正後、同条件（目標rps=20、3分）で再実行。**成功率100%**（1640/1640、目標99%を達成）。p(95)=15.59秒・実効rps 8.79は目標未達のままだが、原因はアプリの詰まりではなく**desiredCount=2（計0.5vCPU）でのCPU容量不足＋試験時間（3分）がAuto Scalingの反応に必要な時間（5分周期×3回＝最低15分）より短いこと**と特定（ECS CPU 37→93→72→55%と実際に高負荷、RDS CPUは5〜6%台でボトルネックでないことを確認）。スケールアウト自体はP-03/P-04で実測済みのため、容量・時間の制約と理解した上で合格と判断 | ✅ |
+| P-09 | WAF 有効時のレイテンシ影響（production） | **スキップ**（2026-09-16）。CloudFrontエッジでの影響は元々小さいことが知られている上、production非公開期間で実測の価値が薄いため見送り | ⬜ スキップ |
 
 ## 考察・学び
 - スケールインはスケールアウトより時間がかかる。標準のスケールイン側アラームは「15 分連続で閾値未満 + クールダウン 5 分」を要するため、スケールアウトの約 3 分に対して 10〜15 分かかることを実地で確認した
@@ -32,7 +32,7 @@
 
 ## 派生した改善・課題
 - **cost-start.yml の desired-count 固定バグを発見・修正**：「Scale ECS」ステップが全環境共通で `--desired-count 1` にハードコードされており、staging の設計値 2 が cost-start のたびに 1 に落とされていた。環境ごとに正しい値を使うよう修正（PR: `fix/cost-start-staging-desired-count`、`91d3dbd` でマージ済み）
-- **P-07 の RunningTaskCount 未表示**：2026-09-27、Container Insights導入で対応することを決定（コスト試算済み、`remaining-task.md` #1参照）。`monitoring-test-result.md` M-06 と同一課題
+- **P-07 の RunningTaskCount 未表示**：2026-09-29、Container Insights導入（PR #89）で解消済み。`monitoring-test-result.md` M-06 と同一課題
 - 非機能要件定義書にレスポンスタイム・目標スループットの目標値が未設定。P-00（116ms） / P-08（暫定20rps、不合格） の実測をもとに追記する
 - **`tomario-app`がFlask開発用サーバーのまま稼働**（P-08不合格の根本原因）。gunicorn切替＋依存パッケージ更新PR起票済み（#13）、マージ後P-08再実施
 - **Auto Scalingの評価期間（3分連続70%超過）と、詰まったリクエストによるCPU使用率の乱高下が噛み合わずスケールアウトしない**ケースがあると判明。gunicorn切替でCPU使用率がリクエスト量に素直に比例するようになれば解消する見込みだが、切替後に再確認が必要

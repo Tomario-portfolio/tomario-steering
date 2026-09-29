@@ -1,10 +1,10 @@
 # production 固有の非機能試験項目・手順
 
-`non-functional-test/`の44項目のうち、staging等と共通ではなく**production環境でのみ**実施するもの10項目（WAF・Security Hub・AWS Config導入に伴う追加検証）をまとめたもの。
+`non-functional-test/`の43項目のうち、staging等と共通ではなく**production環境でのみ**実施するもの8項目（WAF・Security Hub・AWS Config導入に伴う追加検証）をまとめたもの。全項目決着済み（詳細は[test-summary.md](../non-functional-test/test-summary.md)参照）。
 
 - 出典：`../non-functional-test/test-plan.md`・`../non-functional-test/procedures/*.md`
 - 結果の記入先：`../non-functional-test/results/*.md`（本ファイルはあくまで「production向けに手順を集約したもの」で、正式な結果報告書は従来通り`results/`側）
-- 集計日：2026-09-12
+- 最終更新：2026-09-29
 
 ## 環境固有値（production）
 
