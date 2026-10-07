@@ -18,7 +18,7 @@
 | 項目 | 内容 |
 |---|---|
 | 環境 | S-01/S-02 は CI と ECR、S-03 は production の CloudFront、S-04/S-05 は各環境、S-07〜S-10 は production（未公開期間） |
-| 未整備事項 | `pip-audit` は `tomario-app` への導入自体が未対応（remaining-task SEC-4）。ECR プッシュ時スキャンは有効だが結果レビュー運用が未整備 |
+| 未整備事項 | 依存パッケージ・イメージの継続的な脆弱性検知は未導入（Dependabot＋Trivyで導入予定、[ADR](../../../adr/apps/001-dependency-vulnerability-scanning.md)）。ECR プッシュ時スキャンは有効だが結果レビュー運用が未整備 |
 | WAF 前提（S-07/S-08） | `security-environment-design.md` の方針：CloudFront 用（および ALB 用）Web ACL に `AWSManagedRulesCommonRuleSet` / `AWSManagedRulesKnownBadInputsRuleSet` / `AWSManagedRulesSQLiRuleSet` の 3 つをアタッチ。**WAF ログの配信先（S3 / CloudWatch Logs / Firehose）が環境定義に未記載＝先に決めて実装が必要**。IAM は bootstrap のインフラ用ポリシーに `wafv2` 権限が必要（[[feedback_iam_permission_check]]） |
 | Security Hub / Config 前提（S-09/S-10） | `enable_security_hub` / `enable_config` を production で `true` にして apply。IAM に `securityhub` / `config` 権限が必要 |
 | 稼働環境スキャン時の注意 | AWS 上の稼働環境に対して能動スキャンを行う場合は [AWS Customer Support Policy for Penetration Testing](https://aws.amazon.com/security/penetration-testing/) を確認し、禁止行為（DDoS/DoS シミュレーション、ポート/プロトコルフラッディング等）に該当しないことを確認してから実施する |

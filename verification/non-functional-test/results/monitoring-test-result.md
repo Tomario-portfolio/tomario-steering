@@ -39,7 +39,7 @@
 2. わざとエラーを起こす：`curl "https://d14h67xxnvmsdi.cloudfront.net/api/this-does-not-exist"` → クライアントから見えた応答は`200`
 3. ログで実際のバックエンド応答を確認：同じリクエストのログ行は`"GET /api/this-does-not-exist HTTP/1.1" 404`で、バックエンド（Flask）は正しく404を処理していた
 
-**重要な発見**：CloudFrontの`custom_error_response`（SPAルーティング対応、`remaining-task.md` #18で既知）により、クライアントに返る応答は`200`にマスキングされる。**curl等のHTTPステータスコードでは合否判定できず、CloudWatch Logsで実際のオリジン応答を確認する必要がある**（S-07で判明した制約と同じ構造の問題が、監視・ログ調査の文脈でも再確認された）
+**重要な発見**：CloudFrontの`custom_error_response`（SPAルーティング対応）により、クライアントに返る応答は`200`にマスキングされる（403→200は`tomario-infra` PR #83で解消済み。404→200はSPA用に残っている）。**curl等のHTTPステータスコードでは合否判定できず、CloudWatch Logsで実際のオリジン応答を確認する必要がある**（S-07で判明した制約と同じ構造の問題が、監視・ログ調査の文脈でも再確認された）
 
 **確認できたこと**：
 - 時刻・メソッド・パス・ステータスコードは1行のログから辿れる（○）
@@ -54,7 +54,7 @@
 - ~~RunningTaskCount 未表示~~：Container Insights導入で解消済み（2026-09-29、`tomario-infra` PR #89）
 - ~~`tomario-app`がFlask開発用サーバーのまま~~：gunicornへ移行済み（2026-09-28、`tomario-app` PR #13・#14）。あわせて`awslogs-multiline-pattern`も反映済み（PR #90）
 - **request-id付与・構造化ログ・`@app.errorhandler`は依然未実装**：例外メッセージに区別情報が無いケースでは個別リクエストの追跡ができない、という制約が2026-09-29の再検証で確認された。対応候補は変わらず（`@app.before_request`でrequest-id付与、`@app.errorhandler(Exception)`でrequest-id付きエラーログ出力）
-- CloudFrontの`custom_error_response`によるステータスコードマスキング（`remaining-task.md` #18）が、外形監視・障害調査でも影響することを再確認。今後の運用試験・監視設計は「クライアント視点のステータスコード」ではなく「オリジン側のログ」を正とする前提で行う必要がある
+- CloudFrontの`custom_error_response`によるステータスコードマスキング（403はPR #83で解消済み、404→200は残存）が、外形監視・障害調査でも影響することを再確認。今後の運用試験・監視設計は「クライアント視点のステータスコード」ではなく「オリジン側のログ」を正とする前提で行う必要がある
 
 ## エビデンス
 - `../evidence/monitoring/` — 未取得（M-03 のメール受信画面、M-02 のアラーム一覧、M-04 の Logs Insights 結果を実施時に格納）

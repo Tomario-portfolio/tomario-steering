@@ -15,7 +15,7 @@
 |---|---|---|---|
 | S-01 | 依存パッケージの脆弱性スキャン | **合格**（2026-09-29、再検証）。2026-09-26の不合格（4パッケージ13件）を`tomario-app` PR #13で修正（flask→3.1.3、flask-cors→6.0.0、cryptography→49.0.0、python-dotenv→1.2.2）後、`pip-audit`を再実行。残るは`cryptography==49.0.0`のCVE-2026-69247（PKCS7復号のパディングオラクル、修正版50.0.0）1件のみ。`tomario-app`はPKCS7/S-MIME復号機能を一切使用しておらず、脆弱な関数（`pkcs7_decrypt_der`/`_pem`/`_smime`）を呼び出すコード経路が存在しないため実害なしと判断し合格とした。CI（`deploy.yml`）への組み込み自体は未実装（SEC-4未対応、引き続き課題） | ✅ |
 | S-02 | コンテナイメージの脆弱性スキャン | **合格**（2026-09-29、再検証）。2026-09-27の不合格（Critical6/High12/Medium5/Low4の計27件、`perl`/`glibc`/`sqlite3`/`pcre2`/`zlib`のOSパッケージ由来）を`tomario-app` PR #13（`apt-get upgrade`追加）で修正後、再スキャン。**HIGH 2件のみに減少**（`zlib` CVE-2026-85091、`perl` CVE-2026-82560）。Critical・Medium・Lowは全て解消。残る2件はDebian側にまだ修正パッケージが存在しない新規CVEで`apt-get upgrade`では解消不可。`tomario-app`はperlスクリプト実行や攻撃者制御下でのzlib直接操作を行わないため実害は低いと判断し合格とした | ✅ |
-| S-03 | TLS 設定の確認 | **スキップ**（2026-09-27決定）。`openssl s_client`でTLS1.0〜1.3の実ネゴシエーションを確認したところ、TLS1.0/1.1が有効なまま（cipherは`ECDHE-RSA-AES128-SHA`とSHA-1ベース）で、判定基準「TLS1.2以上のみ」を満たさない。原因は`modules/frontend/cloudfront.tf`の`viewer_certificate`が`cloudfront_default_certificate = true`（独自ドメイン無し）で、CloudFrontのデフォルト証明書使用時は`minimum_protocol_version`を絞れない仕様上の制約。**将来的に独自ドメインを取得する予定のため、その際にACM証明書へ切替えてTLS1.2以上に限定する対応とし、今回は見送り**（2026-09-12発見／2026-09-27判断確定） | ⬜ スキップ |
+| S-03 | TLS 設定の確認 | **スキップ**（2026-09-27決定）。`openssl s_client`でTLS1.0〜1.3の実ネゴシエーションを確認したところ、TLS1.0/1.1が有効なまま（cipherは`ECDHE-RSA-AES128-SHA`とSHA-1ベース）で、判定基準「TLS1.2以上のみ」を満たさない。原因は`modules/frontend/cloudfront.tf`の`viewer_certificate`が`cloudfront_default_certificate = true`（独自ドメイン無し）で、CloudFrontのデフォルト証明書使用時は`minimum_protocol_version`を絞れない仕様上の制約。**独自ドメイン・ACM証明書は導入しないことに決めたため（2026-10-04、[ADR](../../../adr/infra/frontend/001-no-custom-domain.md)）、TLS1.0/1.1が有効なまま残ることを既知のリスクとして受け入れる**（2026-09-12発見／2026-09-27スキップ確定） | ⬜ スキップ |
 | S-04 | ネットワーク境界の構成確認 | **合格**（2026-09-29）。(a) ALB 直アクセスが 403（SEC-7、X-Origin-Verify）は staging / production で確認済み。(b) ローカルから`tomario-staging-rds`の3306番ポートへ`nc`で接続を試み`Operation timed out`（到達不可）を確認。(c) ECS パブリック IP なしは確認済み。(d) S3 Block Public Access は2026-09-27に確認完了：`tomario-staging-logs-418295697340`・`tomario-staging-frontend`とも4項目すべて`true`。4点すべて確認完了 | ✅ |
 | S-05 | 脅威検知・監査証跡の実効性 | **合格**（2026-09-27、nonprod/production両方で実体確認完了）。<br>**nonprod/shared（account:418295697340）**：GuardDuty`Status:ENABLED`。CloudTrailのイベント記録は`RunTask`ではなく実際は`UpdateService`という名前で記録されると判明、2026-09-26のO-01/O-02/A-04試験時の`UpdateService`実行3件が実行者(`newport`)・時刻とも正確に記録、`TaskCreated`・`AutoScaling-RetrieveCurrentCapacity`等の関連イベントも追跡できた。S3保存：`s3://tomario-shared-cloudtrail-418295697340/`に本日分まで継続配信を確認。<br>**production（account:236782813946）**：GuardDuty`Status:ENABLED`。CloudTrailは`tomario-production-trail`（マルチリージョン）、2026-09-16のWAFアラーム実装デプロイ時の`UpdateService`（実行者`GitHubActions`）を発見。S3保存：`s3://tomario-production-logs-236782813946/`に本日分まで継続配信を確認 | ✅ |
 | S-07 | WAF マネージドルールの有効性（production） | **合格**（2026-09-16）。XSS（`<script>`タグPOST）・パストラバーサル（URLエンコード済みLFIペイロード）は`AWSManagedRulesCommonRuleSet`で`BLOCK`をWAFサンプリングログ（`get-sampled-requests`）で確認。SQLiは`AWSManagedRulesSQLiRuleSet`自体を導入していないため対象外（`tomario-app`はFlask-SQLAlchemyのORM経由で生SQL文字列組み立てが無く、アプリ側で既にパラメータ化されているため実害は低いと判断し、意図的に追加しない設計判断として整理済み）。PR #83（CloudFront Function移行）後はcurl応答が直接403になることも追加確認。判定はHTTPステータスコードでなくWAFサンプリングログで行う必要がある点に注意（下記前提事項参照） | ✅ |
@@ -25,15 +25,15 @@
 | S-06 | IAM 最小権限の棚卸し（任意） | **スキップ**。元々「任意」項目であり、実施しない判断（2026-09-26決定） | ⬜ スキップ |
 
 ## 前提・未整備事項
-- `pip-audit` は `tomario-app` 側への導入がまだ（`task-and-flow/remaining-task.md` SEC-4）
+- `pip-audit` は `tomario-app` 側への導入がまだ（試験はローカル実行で実施。継続的な検知は後述のDependabot＋Trivyで導入予定）
 - **WAF ログの配信先（S3 / CloudWatch Logs / Firehose）が環境定義に未記載**。S-07 / S-08 / M-07 の前に決めて実装が必要
 - WAF・Security Hub・AWS Config は production のみ・面接期間のみ有効化（`security-environment-design.md`）。S-07〜S-10 はその有効化後に実施
 - bootstrap のインフラ用 IAM ポリシーに `wafv2` / `securityhub` / `config` 権限が含まれているか、導入時に確認する
 - AWS 上の稼働環境に対して能動スキャンを行う場合は [AWS Customer Support Policy for Penetration Testing](https://aws.amazon.com/security/penetration-testing/) を確認し、禁止行為に該当しないことを確認してから実施する
-- **CloudFront の `custom_error_response`（403/404→200、SPAルーティング対応）がWAFのBLOCK応答（403）まで200へマスキングする**（2026-09-12発見）。S-07/S-08 等でHTTPステータスコードによる合否判定は使えず、`aws wafv2 get-sampled-requests` 等のWAFログで`action`を確認する必要がある。恒久対応は `task-and-flow/remaining-task.md` #18（保留中）
+- **CloudFront の `custom_error_response`（403/404→200、SPAルーティング対応）がWAFのBLOCK応答（403）まで200へマスキングしていた**（2026-09-12発見）。S-07実施時点ではHTTPステータスコードで合否判定できず、`aws wafv2 get-sampled-requests` 等のWAFログで`action`を確認した。**`tomario-infra` PR #83（2026-09-16）でSPAルーティングをCloudFront Functionへ移行し、403エントリを削除して解消済み**（WAFのBLOCKはcurlでも403で返る）。404→200のエントリはSPA用に残っている
 
 ## 派生した改善・課題
-- 依存関係スキャン（S-01）の CI 組み込みが未着手（`deploy.yml`への`pip-audit`ステップ追加、SEC-4）
+- 依存関係・イメージスキャンの CI 組み込みが未着手。pip-auditではなく、Dependabot＋Trivy（修正版のあるCritical/Highのみで停止）で導入する方針に決定（2026-10-04、[ADR](../../../adr/apps/001-dependency-vulnerability-scanning.md)）
 - `cryptography`のCVE-2026-69247は実害なしと判断し対応見送り。将来的な定期アップデート時に`50.0.0`へ追従で解消見込み
 - ECR イメージスキャン結果を定期レビューする運用が未整備。加えて、`docker buildx build --push`のマルチアーキ形式（image index）だと`describe-image-scan-findings`をタグ指定で呼んでも見つからない仕様上の落とし穴があると判明（S-02）。実イメージのdigestを指定する必要がある
 - `zlib`（CVE-2026-85091）・`perl`（CVE-2026-82560）はDebian側の修正パッケージ待ち。定期的な`apt-get upgrade`再実行（再デプロイ時に自動追従）で将来解消見込み

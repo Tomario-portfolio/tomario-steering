@@ -23,5 +23,6 @@ GitHub Actionsの`cost-stop.yml`/`cost-start.yml`ワークフローで、ALB・V
 - 常時アクセスできないため、予告なしのデモ・共有には不向き（起動の一手間が必要）
 
 ## 関連情報
-- コスト試算の詳細：[cost-high-level-spec.md](../../../../tomario-docs/basic-design/cost-high-level-spec.md)
-- RDS7日自動復旧への対策：[database-high-level-spec.md](../../../../tomario-docs/basic-design/database-high-level-spec.md)
+- コスト方針：[cost-high-level-spec.md](../../../../tomario-docs/basic-design/cost-high-level-spec.md)
+- コスト試算の詳細：[cost-environment-design.md](../../../../tomario-docs/environment-definitions/cost-environment-design.md)
+- RDS7日自動復旧への対策：方針は[cost-high-level-spec.md](../../../../tomario-docs/basic-design/cost-high-level-spec.md)、設定値（RDS自動停止Lambda）は[database-environment-design.md](../../../../tomario-docs/environment-definitions/database-environment-design.md)

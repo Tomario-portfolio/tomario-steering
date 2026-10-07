@@ -24,5 +24,6 @@ WAF・AWS Config・Security Hubの3つをnonprod（dev/staging/shared）では�
 - WAFのCOUNT/BLOCKモード切り替えの仕組み自体は未実装で、常にBLOCKモードで入る（実ユーザーがいない間は誤検知の実害が無いため許容している。一般公開後に再検討）
 
 ## 関連情報
-- 設計の詳細・コスト試算：[security-high-level-spec.md](../../../../tomario-docs/basic-design/security-high-level-spec.md)・[cost-high-level-spec.md](../../../../tomario-docs/basic-design/cost-high-level-spec.md)
+- 設計の詳細：[security-high-level-spec.md](../../../../tomario-docs/basic-design/security-high-level-spec.md)
+- コスト試算：[cost-environment-design.md](../../../../tomario-docs/environment-definitions/cost-environment-design.md)
 - 導入経緯（当初は非商用のため見送っていたが、時間按分課金と判明し方針転換）：2026-07-11〜2026-08-03の判断
