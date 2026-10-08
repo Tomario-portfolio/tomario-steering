@@ -97,6 +97,5 @@
 
 ## 関連ドキュメント
 
-- 環境固有の設定値・productionでの詳細実行ログ：[../env/production-only-test-items.md](../env/production-only-test-items.md)
 - 各試験の実施手順：[procedures/](procedures/)
 - 各試験の結果報告書：[results/](results/)

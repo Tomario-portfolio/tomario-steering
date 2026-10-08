@@ -17,7 +17,7 @@
 
 **production 固有の追加検証**：production では staging に無い WAF・Security Hub・AWS Config を導入する（`security-environment-design.md`、面接期間のみ有効化。WAF は cost-stop/start に組み込む）。これらの有効性・誤検知・レイテンシ影響・ログ／アラート・緊急デタッチ手順を production（未公開期間）で追加検証する。項番は P-09 / M-07・M-08 / O-03 / S-07〜S-10。
 
-> WAF Web ACL の cost-stop/start 組み込み自体（作成／関連付け／削除が壊れず回ること）は、cost-stop/start を日常運用として繰り返す中で自然に確認できるため、独立した試験項目（旧 O-04）としては置かず、`verification/env/production-only-test-items.md` の運用メモ側で扱う（2026-09-14）。同じ理由で、staging の cost-stop → cost-start によるインフラ再構築確認（旧 O-02）も独立した試験項目からは外した（日常運用で繰り返し確認できる内容のため、2026-09-27）。以降、運用試験の項番は O-01〜O-03（旧 O-03・O-05 をそれぞれ O-02・O-03 に繰り上げ）。
+> WAF Web ACL の cost-stop/start 組み込み自体（作成／関連付け／削除が壊れず回ること）は、cost-stop/start を日常運用として繰り返す中で自然に確認できるため、独立した試験項目（旧 O-04）としては置かない（2026-09-14）。同じ理由で、staging の cost-stop → cost-start によるインフラ再構築確認（旧 O-02）も独立した試験項目からは外した（日常運用で繰り返し確認できる内容のため、2026-09-27）。以降、運用試験の項番は O-01〜O-03（旧 O-03・O-05 をそれぞれ O-02・O-03 に繰り上げ）。
 
 ## 2. 対象環境・構成（共通前提）
 

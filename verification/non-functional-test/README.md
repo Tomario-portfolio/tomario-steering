@@ -43,7 +43,7 @@ prod 同等構成の staging 環境で、性能・可用性・信頼性・復旧
 | 運用オペレーション | O-01〜O-03 | ✅ 全項目合格 |
 | セキュリティ | S-01〜S-10 | ✅ 全項目決着（S-03/S-06/S-08/S-10はスキップ） |
 
-> **production 固有の追加検証**（WAF・Security Hub・AWS Config 導入に伴う）：P-09（WAF レイテンシ影響）／M-07・M-08（WAF ログ・アラート）／O-03（WAF 緊急デタッチ）／S-07〜S-10（WAF ルール有効性・誤検知・Security Hub / Config レビュー）。詳細な実行手順・実測ログは [../env/production-only-test-items.md](../env/production-only-test-items.md) を参照。WAF Web ACL の cost-stop/start 組み込み自体、および staging の cost-stop → cost-start によるインフラ再構築確認は、いずれも日常運用で確認できるため独立した試験項目としては置いていない。
+> **production 固有の追加検証**（WAF・Security Hub・AWS Config 導入に伴う）：P-09（WAF レイテンシ影響）／M-07・M-08（WAF ログ・アラート）／O-03（WAF 緊急デタッチ）／S-07〜S-10（WAF ルール有効性・誤検知・Security Hub / Config レビュー）。WAF Web ACL の cost-stop/start 組み込み自体、および staging の cost-stop → cost-start によるインフラ再構築確認は、いずれも日常運用で確認できるため独立した試験項目としては置いていない。
 
 ## 用語について
 
