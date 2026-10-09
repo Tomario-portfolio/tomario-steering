@@ -20,12 +20,12 @@
 | 種別 | 手順書 | 件数 | 実施日 |
 |---|---|---|---|
 | 性能（P-00〜P-09） | [performance-test-procedure.md](procedures/performance-test-procedure.md) | 10 | 2026-07-20／2026-09-26〜29 |
-| 可用性・信頼性（A-01〜A-05） | [availability-test-procedure.md](procedures/availability-test-procedure.md) | 5 | 2026-07-20／2026-09-26 |
+| 可用性・信頼性（A-01〜A-04） | [availability-test-procedure.md](procedures/availability-test-procedure.md) | 4 | 2026-07-20／2026-09-26 |
 | バックアップ・復旧（B-01〜B-06） | [backup-test-procedure.md](procedures/backup-test-procedure.md) | 6 | 2026-07-21／2026-09-26 |
 | 監視（M-01〜M-08） | [monitoring-test-procedure.md](procedures/monitoring-test-procedure.md) | 8 | 2026-09-03／09-12／09-16／09-26〜29 |
 | 運用オペレーション（O-01〜O-03） | [operations-test-procedure.md](procedures/operations-test-procedure.md) | 3 | 2026-09-16／09-26 |
 | セキュリティ（S-01〜S-10） | [security-test-procedure.md](procedures/security-test-procedure.md) | 10 | 2026-09-12／09-16／09-26〜29 |
-| **合計** | | **42*** | |
+| **合計** | | **41*** | |
 
 \* 準備・後始末ステップ（P-01/P-06、B-02/B-03a/B-05）7件を含む延べ件数。判定対象（合格・スキップ）のみで数えると36件。
 

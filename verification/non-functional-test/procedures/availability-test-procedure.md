@@ -32,7 +32,6 @@
 | A-02 | タスク強制停止からの自動復旧 | staging / production | 詳細手順 2。`list-tasks` で 1 タスクを選び `stop-task`（停止時刻をメモ）→ `describe-services` の `desired/running/pending` を `watch -n 5` で監視 → `running=2` 復帰後に ALB ターゲットヘルスを確認。停止〜復帰の差が MTTR | 停止直後 `running:1` → `pending:1` → 1〜2 分で `running:2`。ALB ターゲット 2 台とも `healthy`。MTTR < 5 分 | AZ 障害・ホスト障害の簡易シミュレーション。実績：1 分未満（2026-07-20） |
 | A-03 | 処理中リクエストへの影響・データ整合性 | staging | 詳細手順 3。【ターミナル A】でログイン Cookie 取得 → 予約作成 API へ 100 リクエスト連続送信ループ。その最中に【ターミナル B】で `stop-task`。ループ終了後、ステータスコード内訳を集計し、ECS Exec で `bookings` に中途半端なレコードが無いか確認 | エラー（5xx）は数件まで許容（`deregistration_delay=30` のため瞬間的なエラーは想定内）。**DB に `total_price` が NULL/0 等の不完全なレコードが残らない**。タスク復旧後は `201` が再び返る | 実績（2026-07-20）：500 が 1 件（書き込み前の SELECT で DB 接続断、実害なし）、新規予約レコード 0 件、不整合なし |
 | A-04 | 正常なローリングデプロイ中の無停止性 | staging | 詳細手順 4。【ターミナル A】で `/health` へ 0.3 秒間隔の curl ループ（または k6 を軽負荷で）を回しながら、【ターミナル B】で `update-service --force-new-deployment`（正常なタスク定義のまま）を実行。`wait services-stable` まで継続し、ステータスコード内訳を集計 | デプロイ中も 5xx がほぼ発生しない（数件以内）。`running` が 0 にならず、`deployments` が 1 本（PRIMARY のみ）に収束する | 異常系（A-01）だけでなく正常デプロイ時のリクエスト継続性を確認 |
-| A-05 | 壊れたリビジョンの後片付け | staging | `aws ecs deregister-task-definition --task-definition tomario-staging-task:<壊れた revision>` | 壊れたリビジョンが `INACTIVE` になる | A-01 の後始末。放置してもコストは発生しないが棚卸しとして実施 |
 
 ## 詳細手順
 
@@ -165,4 +164,3 @@ sort /tmp/rolling_deploy_health.log | awk '{print $2}' | sort | uniq -c
 - 結果を [../results/availability-test-result.md](../results/availability-test-result.md) の結果表へ転記する
 - A-01 の MTTR、A-02 の復旧時間、A-03 のステータスコード内訳、A-04 のデプロイ中 5xx 件数と所要時間を記録する
 - `describe-services` のイベントログ、デプロイ状態遷移、ALB ターゲットヘルス、`rolling_deploy_health.log` を `../evidence/availability/` に格納する
-- **A-05（壊れたリビジョンを `INACTIVE` にした）をチェックする**

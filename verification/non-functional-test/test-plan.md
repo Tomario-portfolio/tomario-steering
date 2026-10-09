@@ -55,7 +55,7 @@
 ## 4. 確認項目一覧
 
 判定基準を満たさない項目は課題として起票し、修正後に再試験する。項番は各実施手順書（`procedures/`）と対応する。
-準備・後始末・任意ステップ（P-01/P-06/P-07、A-05、B-02/B-04/B-05/B-06、S-06 等）は手順書側に記載する。
+準備・後始末・任意ステップ（P-01/P-06/P-07、B-02/B-04/B-05/B-06、S-06 等）は手順書側に記載する。
 
 ### 性能試験（P）— [procedures/performance-test-procedure.md](procedures/performance-test-procedure.md)
 
