@@ -17,26 +17,26 @@
 
 | 項目 | 内容 |
 |---|---|
-| 環境 | S-01/S-02 は CI と ECR、S-03 は production の CloudFront、S-04/S-05 は各環境、S-07〜S-10 は production（未公開期間） |
-| 未整備事項 | 依存パッケージ・イメージの継続的な脆弱性検知は未導入（Dependabot＋Trivyで導入予定、[ADR](../../../adr/apps/001-dependency-vulnerability-scanning.md)）。ECR プッシュ時スキャンは有効だが結果レビュー運用が未整備 |
-| WAF 前提（S-07/S-08） | `security-environment-design.md` の方針：CloudFront 用（および ALB 用）Web ACL に `AWSManagedRulesCommonRuleSet` / `AWSManagedRulesKnownBadInputsRuleSet` / `AWSManagedRulesSQLiRuleSet` の 3 つをアタッチ。**WAF ログの配信先（S3 / CloudWatch Logs / Firehose）が環境定義に未記載＝先に決めて実装が必要**。IAM は bootstrap のインフラ用ポリシーに `wafv2` 権限が必要（[[feedback_iam_permission_check]]） |
-| Security Hub / Config 前提（S-09/S-10） | `enable_security_hub` / `enable_config` を production で `true` にして apply。IAM に `securityhub` / `config` 権限が必要 |
+| 環境 | S-01/S-02 は CI と ECR、S-03 は staging の CloudFront、S-04/S-05 は各環境、S-07〜S-10 は production |
+| 脆弱性検知の仕組み | 依存パッケージは Dependabot、コンテナイメージは CI（`deploy.yml`）の Trivy で継続的に検知する（[ADR](../../../adr/apps/001-dependency-vulnerability-scanning.md)）。ECR プッシュ時スキャンも有効だが、結果レビューの運用は未整備 |
+| WAF 前提（S-07/S-08） | CloudFront 用・ALB 用の Web ACL に `AWSManagedRulesCommonRuleSet` / `AWSManagedRulesKnownBadInputsRuleSet` / `AWSManagedRulesAmazonIpReputationList` の 3 つをアタッチ（`tomario-infra/modules/waf/main.tf`）。WAF ログは CloudWatch Logs（`aws-waf-logs-tomario-production-{cloudfront,alb}`）に配信。IAM の `wafv2` 権限は bootstrap-prod のインフラ用ポリシーに付与済み |
+| Security Hub / Config 前提（S-09/S-10） | production で `enable_security_hub` / `enable_config` を `true` にして適用済み。IAM の `securityhub` / `config` 権限は bootstrap-prod のインフラ用ポリシーに付与済み |
 | 稼働環境スキャン時の注意 | AWS 上の稼働環境に対して能動スキャンを行う場合は [AWS Customer Support Policy for Penetration Testing](https://aws.amazon.com/security/penetration-testing/) を確認し、禁止行為（DDoS/DoS シミュレーション、ポート/プロトコルフラッディング等）に該当しないことを確認してから実施する |
 
 ## 試験項目一覧
 
 | 番号 | 項目 | 実施環境 | 試験手順 | 想定結果 | 備考 |
 |---|---|---|---|---|---|
-| S-01 | 依存パッケージの脆弱性スキャン | CI（tomario-app） | `deploy.yml` に `pip-audit`（または `pip-audit -r requirements.txt`）ステップを追加し、Critical/High 検出でジョブを失敗させる。ローカル先行実行も可 | Critical/High ゼロ、または各指摘に対応方針（バージョン更新／許容理由）を記録 | SEC-4。まず tomario-app への導入が必要 |
+| S-01 | 依存パッケージの脆弱性スキャン | ローカル / GitHub（tomario-app） | 1. ローカルで `pip-audit -r requirements.txt` を実行し、依存パッケージの既知の脆弱性を確認する<br>2. GitHub の Dependabot alerts に、未対応の Critical/High が残っていないことを確認する | Critical/High ゼロ、または各指摘に対応方針（バージョン更新／許容理由）を記録 | 継続的な検知は Dependabot が担い、CI への `pip-audit` 組み込みは行わない（[ADR](../../../adr/apps/001-dependency-vulnerability-scanning.md)） |
 | S-02 | コンテナイメージの脆弱性スキャン | ECR / ローカル | ECR プッシュ時スキャン結果を `aws ecr describe-image-scan-findings --repository-name tomario-production-app --image-id imageTag=<tag>` で取得。または `trivy image <ECR image URI>` | Critical/High ゼロ、または対応方針を記録 | ベースイメージ更新で解消するものが多い |
-| S-03 | TLS 設定の確認 | production | `testssl.sh <CloudFront ドメイン>` または SSL Labs（`https://www.ssllabs.com/ssltest/`）で診断 | TLS 1.2 以上のみ有効。既知の弱いプロトコル（SSLv3/TLS1.0/1.1）・弱い暗号スイートが無効 | CloudFront のセキュリティポリシー設定に依存 |
-| S-04 | ネットワーク境界の構成確認 | dev / staging / production | 詳細手順 1。(a) ALB 直アクセスが 403（X-Origin-Verify, SEC-7） (b) ローカルから RDS:3306 がタイムアウト (c) ECS タスクにパブリック IP なし (d) S3 の Block Public Access が有効 | すべて想定どおり（拒否・到達不可・IP なし・公開ブロック） | (a)(c) は既に実施実績あり。項番付きで再確認 |
-| S-05 | 脅威検知・監査証跡の有効性 | dev / staging / production | 詳細手順 2。GuardDuty が `ENABLED`、CloudTrail に直近の操作（RunTask / GetSecretValue 等）が記録され、S3 バケットにログファイルが存在する | GuardDuty 有効、CloudTrail のイベントと S3 保存を確認 | 「有効化した」と「記録されている」は別 |
-| S-07 | WAF マネージドルールの有効性 | production（未公開期間） | 詳細手順 3。SQLi・XSS・パストラバーサル等の攻撃ペイロードを curl / OWASP ZAP で送信し、403（WAF ブロック）が返ることを確認。`CommonRuleSet` / `KnownBadInputsRuleSet` / `SQLiRuleSet` の各カテゴリで実施 | 攻撃リクエストが 403 でブロックされ、WAF ログに `action=BLOCK` が記録される | 「WAF を入れた」と「効いている」は別 |
-| S-08 | WAF 誤検知（false positive）確認 | production（未公開期間） | 詳細手順 4。3 つのマネージドルールをまず COUNT モードで作成 → 数日〜一定期間、正常な業務操作（会員登録・予約フォーム送信・日本語氏名・長文 POST）を流す → WAF ログのサンプルを確認 → 誤検知ルールを除外（rule action override / label match）→ BLOCK へ切替 | 正常操作が COUNT ログで BLOCK 相当に該当しない、または除外設定後に該当しなくなる | **いきなり BLOCK で有効化しない**。この手順自体が試験 |
-| S-09 | Security Hub の検出結果レビュー | production（未公開期間） | `enable_security_hub=true` で apply 後、`aws securityhub get-findings --filters '{"SeverityLabel":[{"Value":"CRITICAL","Comparison":"EQUALS"},{"Value":"HIGH","Comparison":"EQUALS"}]}'` で Critical / High を抽出しレビュー | Critical / High = 0、または各 finding に「対応」「許容（理由）」を記録 | CIS AWS Foundations 等のセキュリティ標準に対する自動評価 |
-| S-10 | AWS Config ルールのコンプライアンス評価 | production（未公開期間） | `enable_config=true` で apply 後、`aws configservice describe-compliance-by-config-rule` / `get-compliance-details-by-config-rule` で NON_COMPLIANT を抽出しレビュー | NON_COMPLIANT = 0、または各リソースに対応方針を記録 | リソース構成のコンプライアンス継続監視 |
+| S-03 | TLS 設定の確認 | staging | `testssl.sh <CloudFront ドメイン>` または SSL Labs（`https://www.ssllabs.com/ssltest/`）で診断 | TLS 1.2 以上のみ有効。既知の弱いプロトコル（SSLv3/TLS1.0/1.1）・弱い暗号スイートが無効 | CloudFront のセキュリティポリシー設定に依存 |
+| S-04 | ネットワーク境界の構成確認 | staging | 詳細手順 1。(a) ALB 直アクセスが 403（X-Origin-Verify, SEC-7） (b) ローカルから RDS:3306 がタイムアウト (c) ECS タスクにパブリック IP なし (d) S3 の Block Public Access が有効 | すべて想定どおり（拒否・到達不可・IP なし・公開ブロック） | (a)(c) は既に実施実績あり。項番付きで再確認 |
+| S-05 | 脅威検知・監査証跡の有効性 | staging / production | 詳細手順 2。GuardDuty が `ENABLED`、CloudTrail に直近の操作（RunTask / GetSecretValue 等）が記録され、S3 バケットにログファイルが存在する | GuardDuty 有効、CloudTrail のイベントと S3 保存を確認 |  |
 | S-06 | IAM 最小権限の棚卸し（任意） | 全環境 | IAM Access Analyzer の未使用アクセス分析、または `aws iam generate-service-last-accessed-details` で各ロールの未使用権限を確認 | 未使用の広範な権限がない、または削減方針を記録 | 優先度低。職務分掌（インフラ用／デプロイ用）は設計済み |
+| S-07 | WAF マネージドルールの有効性 | production | 詳細手順 3。SQLi・XSS・パストラバーサル等の攻撃ペイロードを curl / OWASP ZAP で送信し、403（WAF ブロック）が返ることを確認。`CommonRuleSet` / `KnownBadInputsRuleSet` / `SQLiRuleSet` の各カテゴリで実施 | 攻撃リクエストが 403 でブロックされ、WAF ログに `action=BLOCK` が記録される |  |
+| S-08 | WAF 誤検知（false positive）確認 | production | 詳細手順 4。3 つのマネージドルールをまず COUNT モードで作成 → 数日〜一定期間、正常な業務操作（会員登録・予約フォーム送信・日本語氏名・長文 POST）を流す → WAF ログのサンプルを確認 → 誤検知ルールを除外（rule action override / label match）→ BLOCK へ切替 | 正常操作が COUNT ログで BLOCK 相当に該当しない、または除外設定後に該当しなくなる | **いきなり BLOCK で有効化しない**。この手順自体が試験 |
+| S-09 | Security Hub の検出結果レビュー | production | `enable_security_hub=true` で apply 後、`aws securityhub get-findings --filters '{"SeverityLabel":[{"Value":"CRITICAL","Comparison":"EQUALS"},{"Value":"HIGH","Comparison":"EQUALS"}]}'` で Critical / High を抽出しレビュー | Critical / High = 0、または各 finding に「対応」「許容（理由）」を記録 | CIS AWS Foundations 等のセキュリティ標準に対する自動評価 |
+| S-10 | AWS Config ルールのコンプライアンス評価 | production | `enable_config=true` で apply 後、`aws configservice describe-compliance-by-config-rule` / `get-compliance-details-by-config-rule` で NON_COMPLIANT を抽出しレビュー | NON_COMPLIANT = 0、または各リソースに対応方針を記録 | リソース構成のコンプライアンス継続監視 |
 
 ## 詳細手順
 

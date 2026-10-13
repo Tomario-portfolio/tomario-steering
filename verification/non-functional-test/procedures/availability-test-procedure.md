@@ -28,10 +28,10 @@
 
 | 番号 | 項目 | 実施環境 | 試験手順 | 想定結果 | 備考 |
 |---|---|---|---|---|---|
-| A-01 | デプロイサーキットブレーカーによる自動ロールバック | staging | 詳細手順 1。現行タスク定義を取得 → `command` を存在しないコマンドに書き換えて `register-task-definition` → `update-service --force-new-deployment` → `describe-services` の `deployments[].rolloutState` を `watch` で監視。FAILED 検知〜ロールバック完了の時刻から MTTR を算出 | `rolloutState` が `IN_PROGRESS` → `FAILED`（reason: circuit breaker threshold reached）→ 直前の正常リビジョンへ自動ロールバック。ロールバック中も `running` が 0 にならない。MTTR < 5 分 | 実績：MTTR 約 1 分 50 秒（2026-07-20） |
-| A-02 | タスク強制停止からの自動復旧 | staging / production | 詳細手順 2。`list-tasks` で 1 タスクを選び `stop-task`（停止時刻をメモ）→ `describe-services` の `desired/running/pending` を `watch -n 5` で監視 → `running=2` 復帰後に ALB ターゲットヘルスを確認。停止〜復帰の差が MTTR | 停止直後 `running:1` → `pending:1` → 1〜2 分で `running:2`。ALB ターゲット 2 台とも `healthy`。MTTR < 5 分 | AZ 障害・ホスト障害の簡易シミュレーション。実績：1 分未満（2026-07-20） |
-| A-03 | 処理中リクエストへの影響・データ整合性 | staging | 詳細手順 3。【ターミナル A】でログイン Cookie 取得 → 予約作成 API へ 100 リクエスト連続送信ループ。その最中に【ターミナル B】で `stop-task`。ループ終了後、ステータスコード内訳を集計し、ECS Exec で `bookings` に中途半端なレコードが無いか確認 | エラー（5xx）は数件まで許容（`deregistration_delay=30` のため瞬間的なエラーは想定内）。**DB に `total_price` が NULL/0 等の不完全なレコードが残らない**。タスク復旧後は `201` が再び返る | 実績（2026-07-20）：500 が 1 件（書き込み前の SELECT で DB 接続断、実害なし）、新規予約レコード 0 件、不整合なし |
-| A-04 | 正常なローリングデプロイ中の無停止性 | staging | 詳細手順 4。【ターミナル A】で `/health` へ 0.3 秒間隔の curl ループ（または k6 を軽負荷で）を回しながら、【ターミナル B】で `update-service --force-new-deployment`（正常なタスク定義のまま）を実行。`wait services-stable` まで継続し、ステータスコード内訳を集計 | デプロイ中も 5xx がほぼ発生しない（数件以内）。`running` が 0 にならず、`deployments` が 1 本（PRIMARY のみ）に収束する | 異常系（A-01）だけでなく正常デプロイ時のリクエスト継続性を確認 |
+| A-01 | デプロイサーキットブレーカーによる自動ロールバック | staging | 1. 現在のタスク定義を取得し、コンテナの起動コマンドを存在しないコマンドに書き換える。それを新しいリビジョン（壊れたタスク定義）として登録する<br>2. ECSサービスを壊れたリビジョンでデプロイし、デプロイ開始時刻を記録する<br>3. デプロイの状態を10秒間隔で監視する。デプロイ失敗を検知した時刻と、直前の正常なリビジョンへのロールバックが完了した時刻を記録する<br>4. ロールバックの完了後、稼働中のタスク数が2台に戻っていることを確認する。あわせて、サービスのイベントログにロールバックの記録が残っていることを確認する<br>5. 失敗検知からロールバック完了までの時間を算出する<br>（コマンドは詳細手順1を参照） | `rolloutState` が `IN_PROGRESS` → `FAILED`（reason: circuit breaker threshold reached）→ 直前の正常リビジョンへ自動ロールバック。ロールバック中も `running` が 0 にならない。失敗検知からロールバック完了まで 5 分未満 |  |
+| A-02 | タスク強制停止からの自動復旧 | staging | 1. 稼働中のタスクを1つ選んで強制停止し、停止した時刻を記録する<br>2. サービスのタスク数（必要数・稼働中・起動中）を5秒間隔で監視し、稼働中のタスク数が2台に戻った時刻を記録する<br>3. 2台に戻ったあと、ALBのターゲットグループで、2台ともヘルスチェックが正常（healthy）であることを確認する<br>4. 停止から2台に戻るまでの時間を、復旧時間（MTTR）として算出する<br>（コマンドは詳細手順2を参照） | 停止直後 `running:1` → `pending:1` → 1〜2 分で `running:2`。ALB ターゲット 2 台とも `healthy`。MTTR < 5 分 | AZ 障害・ホスト障害の簡易シミュレーション |
+| A-03 | 処理中リクエストへの影響・データ整合性 | staging | 1. ターミナルで、試験用ユーザーでログインする<br>2. ターミナルで、予約作成APIへ0.3秒間隔で100回リクエストを送る<br>3. 送信の最中に、別のターミナルで稼働中のタスクを1つ強制停止する<br>4. 送信が終わったら、ステータスコードごとの件数を数える。5xxが返ったリクエストは、レスポンスの内容を確認する<br>5. ECS Execでコンテナに入り、予約テーブルに不完全なレコード（金額が空や0など）が残っていないことを確認する<br>（コマンドは詳細手順3を参照） | エラー（5xx）は数件まで許容（`deregistration_delay=30` のため瞬間的なエラーは想定内）。**DB に `total_price` が NULL/0 等の不完全なレコードが残らない**。タスク復旧後は `201` が再び返る |  |
+| A-04 | 正常なローリングデプロイ中の無停止性 | staging | 1. ターミナルで、ヘルスチェック用のURL（`/health`）へ0.3秒間隔で400回リクエストを送る<br>2. 送信の最中に、別のターミナルでタスク定義を変えずに再デプロイを実行し、デプロイ開始時刻を記録する<br>3. 別のターミナルで、サービスのデプロイ数とタスク数を5秒間隔で監視する。稼働中のタスク数が0台にならないことと、デプロイが1本に収束することを確認し、収束した時刻を記録する<br>4. 送信が終わったら、ステータスコードごとの件数を数える<br>（コマンドは詳細手順4を参照） | デプロイ中も 5xx がほぼ発生しない（数件以内）。`running` が 0 にならず、`deployments` が 1 本（PRIMARY のみ）に収束する | 異常系（A-01）だけでなく正常デプロイ時のリクエスト継続性を確認 |
 
 ## 詳細手順
 
@@ -73,7 +73,7 @@ aws ecs describe-services --cluster tomario-staging-cluster --services tomario-s
 ```
 
 確認するもの：`rolloutState` が `FAILED` → PRIMARY デプロイが元のタスク定義に戻る、`running` が 0 になる瞬間が無い、
-FAILED 検知時刻とロールバック完了時刻の差（MTTR）。
+FAILED 検知時刻とロールバック完了時刻の差（失敗検知からロールバック完了までの時間）。
 
 ### 手順 2（A-02）：タスク強制停止からの自動復旧
 
@@ -95,12 +95,12 @@ aws elbv2 describe-target-health --target-group-arn $TG_ARN \
 ### 手順 3（A-03）：処理中リクエストへの影響
 
 ```
-【ターミナル A】ログイン Cookie 取得 → 予約作成 API へ 100 リクエストのループ ─┐ 同時進行
-【ターミナル B】ループ実行中に stop-task ───────────────────────────────────┘
+【ターミナル】ログイン Cookie 取得 → 予約作成 API へ 100 リクエストのループ ─┐ 同時進行
+【別のターミナル】ループ実行中に stop-task ──────────────────────────────────┘
 ```
 
 ```bash
-# 【ターミナル A】
+# 【ターミナル】
 curl -c cookies.txt -X POST https://{CLOUDFRONT_DOMAIN}/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"loadtest_user_0@example.com","password":"loadtest-password-not-for-prod"}'
@@ -113,7 +113,7 @@ for i in $(seq 1 100); do
   echo "リクエスト$i: HTTP $STATUS"; sleep 0.3
 done
 
-# 【ターミナル B】ループ中に実行
+# 【別のターミナル】ループ中に実行
 TASK_ARN=$(aws ecs list-tasks --cluster tomario-staging-cluster \
   --service-name tomario-staging-service --desired-status RUNNING --query 'taskArns[0]' --output text)
 aws ecs stop-task --cluster tomario-staging-cluster --task $TASK_ARN --reason "障害試験：処理中リクエストへの影響確認"
@@ -133,26 +133,27 @@ FROM bookings ORDER BY created_at DESC LIMIT 20;
 ### 手順 4（A-04）：正常なローリングデプロイ中の無停止性
 
 ```
-【ターミナル A】/health へ 0.3 秒間隔の curl ループ ─┐ 同時進行
-【ターミナル B】正常なタスク定義のまま force-new-deployment ─┘
+【ターミナル】/health へ 0.3 秒間隔の curl ループ ─┐ 同時進行
+【別のターミナル】正常なタスク定義のまま force-new-deployment ─┘
 ```
 
 ```bash
-# 【ターミナル A】デプロイ中ずっと回し続ける
+# 【ターミナル】デプロイ中ずっと回し続ける
 for i in $(seq 1 400); do
   echo "$(date +%T) $(curl -s -o /dev/null -w '%{http_code}' https://{CLOUDFRONT_DOMAIN}/health)"
   sleep 0.3
 done | tee /tmp/rolling_deploy_health.log
 
-# 【ターミナル B】ループ開始後に実行（タスク定義は現行のまま = 正常デプロイ）
+# 【別のターミナル】ループ開始後に実行（タスク定義は現行のまま = 正常デプロイ）
 date   # デプロイ開始時刻
 aws ecs update-service --cluster tomario-staging-cluster --service tomario-staging-service \
   --force-new-deployment \
   --query "service.deployments[*].{status:status,rolloutState:rolloutState}"
-aws ecs wait services-stable --cluster tomario-staging-cluster --services tomario-staging-service
-date   # 安定時刻
+watch -n 5 'aws ecs describe-services --cluster tomario-staging-cluster --services tomario-staging-service \
+  --query "services[0].{running:runningCount,deployments:length(deployments)}"'
+# running が 0 にならないことを確認。deployments が 1 になったら Ctrl+C し、その時刻をメモ（安定時刻）
 
-# 【ターミナル A】ループ終了後に集計
+# 【ターミナル】ループ終了後に集計
 sort /tmp/rolling_deploy_health.log | awk '{print $2}' | sort | uniq -c
 ```
 
@@ -162,5 +163,5 @@ sort /tmp/rolling_deploy_health.log | awk '{print $2}' | sort | uniq -c
 ## 実施後の記録
 
 - 結果を [../results/availability-test-result.md](../results/availability-test-result.md) の結果表へ転記する
-- A-01 の MTTR、A-02 の復旧時間、A-03 のステータスコード内訳、A-04 のデプロイ中 5xx 件数と所要時間を記録する
+- A-01 の失敗検知からロールバック完了までの時間、A-02 の復旧時間、A-03 のステータスコード内訳、A-04 のデプロイ中 5xx 件数と所要時間を記録する
 - `describe-services` のイベントログ、デプロイ状態遷移、ALB ターゲットヘルス、`rolling_deploy_health.log` を `../evidence/availability/` に格納する

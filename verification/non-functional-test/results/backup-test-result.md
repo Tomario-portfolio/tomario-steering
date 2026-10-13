@@ -12,15 +12,10 @@
 
 ## 結果（手順書の各項目に対応）
 
-| 番号 | 項目 | 実測結果 | 合否 |
-|---|---|---|---|
-| B-01 | 自動バックアップの取得確認 | `LatestRestorableTime` が現在時刻の**約 6 分前**。`BackupRetention=7`。continuous backup は正常 | ✅ |
-| B-02 | 障害シミュレーション（データ削除） | ECS Exec でコンテナに入り、`bookings` の最新レコード（ID:5000）を削除。削除時刻 01:09:30 UTC をメモ | — 実施 |
-| B-03 | ポイントインタイムリストア | 削除の 1 分前（10:08:30 JST）を指定してリストア実行。**初回は `LatestRestorableTime` が削除時刻に未到達で `InvalidParameterValue` エラー**。数分待って再実行し成功。**RTO 約 14 分**（10:14:28 開始 → 10:28:33 利用可能）。新規インスタンス `tomario-staging-rds-restore-test` が `available` に | ✅ |
-| B-03a（参考） | 復元可能時点の粒度（反映ラグ） | continuous backup の反映に**数分のラグ**があることを実測で確認（初回エラーの原因） | — 記録 |
-| B-04 | 復元データの検証 | 復元先で `bookings count: 5000` / `latest id: 5000` を確認。B-02 で削除した ID:5000 が復元されていた | ✅ |
-| B-05 | 訓練用インスタンスの削除 | `tomario-staging-rds-restore-test` を `delete-db-instance --skip-final-snapshot` で削除。ECS Exec も無効化済み | — 後始末 |
-| B-06 | 手動スナップショットからの復元（任意） | **スキップ**。B-03（PITR）と同種の復旧確認であり新規性が薄いと判断（2026-09-26決定） | ⬜ スキップ |
+| 番号 | 項目 | 実測結果 | 実施日 | 合否 |
+|---|---|---|---|---|
+| B-01 | 自動バックアップが取得されていること | `LatestRestorableTime` が現在時刻の**約 6 分前**。`BackupRetention=7`。continuous backup は正常 | 2026-07-21 | ✅ |
+| B-02 | PITRで削除データを復旧できること | **削除**：ECS Exec でコンテナに入り、`bookings` の最新レコード（ID:5000）を削除（削除時刻 01:09:30 UTC）。**リストア**：削除の 1 分前（10:08:30 JST）を指定して実行。初回は `LatestRestorableTime` が削除時刻に未到達で `InvalidParameterValue` エラー（continuous backup の反映に**数分のラグ**があるため）。数分待って再実行し成功。**RTO 約 14 分**（10:14:28 開始 → 10:28:33 利用可能）。**検証**：復元先で `bookings count: 5000` / `latest id: 5000` を確認し、削除した ID:5000 が復元されていた。**後始末**：`tomario-staging-rds-restore-test` を `delete-db-instance --skip-final-snapshot` で削除。ECS Exec も無効化済み | 2026-07-21 | ✅ |
 
 ## 考察・学び
 - continuous backup には数分の反映ラグがあるため、「直近で起きた障害」の直前時点を即座に指定するとリストアできない。ラグが解消して `LatestRestorableTime` が対象時刻を超えてから実行する必要がある。事故時に慌てないよう事前に知っておく価値がある

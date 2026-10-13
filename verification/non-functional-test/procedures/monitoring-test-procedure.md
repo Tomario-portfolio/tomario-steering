@@ -17,7 +17,7 @@
 
 | 項目 | 内容 |
 |---|---|
-| 環境 | staging または production（prod 未公開期間）。手順内の名前は dev / staging を例に記載 |
+| 環境 | staging または production。手順内の名前は staging を例に記載 |
 | 起動状態 | cost-start 実行済みで ECS タスクが稼働中（アラーム評価に最低 10 分程度のメトリクス蓄積が必要） |
 | 通知先 | SNS トピックにメールアドレスが登録済み |
 | 注意 | M-03 で閾値を一時的に変更した場合、試験後に必ず元へ戻す。試験用アラームを作った場合は削除する |
@@ -26,18 +26,32 @@
 
 | 番号 | 項目 | 実施環境 | 試験手順 | 想定結果 | 備考 |
 |---|---|---|---|---|---|
-| M-01 | SNS サブスクリプション確認 | dev / staging / production | `aws sns list-subscriptions-by-topic --topic-arn <alarm topic> --query "Subscriptions[*].{Protocol:Protocol,Endpoint:Endpoint,Arn:SubscriptionArn}"` | `SubscriptionArn` が `PendingConfirmation` ではなく実 ARN | 未確認だとアラーム発報しても通知が届かない |
-| M-02 | アラームが OK 状態 | dev / staging / production | `aws cloudwatch describe-alarms --alarm-name-prefix "tomario-staging" --query "MetricAlarms[*].{Name:AlarmName,State:StateValue,Reason:StateReason}" --output table` | 全アラームの `StateValue` が `OK`（`INSUFFICIENT_DATA` でない） | 起動直後は評価期間 5 分 × 2 回で最大 10 分 `INSUFFICIENT_DATA` |
-| M-03 | 閾値超過 → メール通知到達 | staging / production（未公開期間） | 詳細手順 1。対象アラームの閾値を一時的に下げる、または負荷をかけて実際に超過させる → `ALARM` 遷移を確認 → 通知先メール受信を確認 → 閾値を元に戻す | アラームが `ALARM` に遷移し、通知先メールでアラーム通知を受信する | production 初回動作確認（2026-09-03）では手動発火のみ実施済み。閾値超過による発報は本項目で実施 |
-| M-04 | ログ追跡性（Logs Insights） | dev / staging / production | 詳細手順 2。CloudWatch Logs Insights で特定リクエスト ID・エラー文字列・ステータスコードで検索 | 該当するログ行を絞り込んで追跡できる | 「ログが出ている」と「調査に使える」は別 |
-| M-05 | ECS アプリログの出力確認 | dev / staging / production | `aws logs describe-log-streams --log-group-name "/ecs/tomario-staging" --order-by LastEventTime --descending --max-items 3` → `aws logs get-log-events --log-group-name "/ecs/tomario-staging" --log-stream-name "<stream>" --limit 20 --query "events[*].message" --output text` | 直近の API リクエスト（`GET /health`・`POST /api/auth/login` 等）のログが出力されている | 保持日数は dev=7 / staging=30 / production=90 |
+| M-01 | SNS サブスクリプション確認 | staging | 1. アラーム通知用のSNSトピックに登録されている購読（サブスクリプション）の一覧を取得する<br>2. 通知先メールアドレスの購読が、確認待ち（PendingConfirmation）ではなく確認済みになっていることを確認する<br>（コマンドは詳細手順1を参照） | `SubscriptionArn` が `PendingConfirmation` ではなく実 ARN |  |
+| M-02 | CloudWatchアラーム（ECS・ALB・RDS）が OK 状態 | staging | 1. stagingのCloudWatchアラームの一覧と、それぞれの状態を取得する<br>2. すべてのアラームの状態が「OK」であることを確認する<br>（コマンドは詳細手順2を参照） | 全アラームの `StateValue` が `OK`（`INSUFFICIENT_DATA` でない） | 起動直後は評価期間 5 分 × 2 回で最大 10 分 `INSUFFICIENT_DATA` |
+| M-03 | 閾値超過 → メール通知到達 | staging | 詳細手順 3。対象アラームの閾値を一時的に下げる、または負荷をかけて実際に超過させる → `ALARM` 遷移を確認 → 通知先メール受信を確認 → 閾値を元に戻す | アラームが `ALARM` に遷移し、通知先メールでアラーム通知を受信する | production 初回動作確認（2026-09-03）では手動発火のみ実施済み。閾値超過による発報は本項目で実施 |
+| M-04 | ログ追跡性（Logs Insights） | staging | 詳細手順 4。CloudWatch Logs Insights で特定リクエスト ID・エラー文字列・ステータスコードで検索 | 該当するログ行を絞り込んで追跡できる |  |
+| M-05 | ECS アプリログの出力確認 | staging | 1. アプリのロググループから、最近更新されたログストリームを3件取得する<br>2. そのうち最新のログストリームから、ログを20件取得する<br>3. 直近のAPIリクエスト（`GET /health` や `POST /api/auth/login` など）のログが出力されていることを確認する<br>（コマンドは詳細手順5を参照） | 直近の API リクエスト（`GET /health`・`POST /api/auth/login` 等）のログが出力されている | 保持日数は dev=7 / staging=30 / production=90 |
 | M-06 | メトリクスダッシュボードの視認性 | staging | `tomario-staging-autoscaling` ダッシュボードを開き、負荷試験実施時間帯を含む範囲で CPU 使用率・タスク数の推移を確認 | 負荷と連動したグラフが視認できる | RunningTaskCount は Container Insights 未有効のため未表示（既知課題） |
-| M-07 | WAF ログの配信確認 | production（未公開期間） | 詳細手順 3。WAF ログの配信先（S3 なら `aws s3 ls`、CloudWatch Logs なら `describe-log-streams` / Logs Insights）を確認し、サンプリングされたリクエストの `action`（ALLOW / BLOCK / COUNT）・`terminatingRuleId` が読めること | 配信先にログが存在し、S-07 で送った攻撃リクエストが `BLOCK` として記録されている | **配信先の設計が未記載＝先に S3 / CloudWatch Logs / Firehose のいずれか決めて実装が必要** |
-| M-08 | WAF BlockedRequests アラートの発報 | production（未公開期間） | 詳細手順 4。`AWS/WAFV2` の `BlockedRequests` に CloudWatch アラームを設定 → S-07 の攻撃ペイロード送信 or 閾値を一時的に下げて `ALARM` に遷移させる → 通知先メール受信を確認 | `BlockedRequests` アラームが `ALARM` に遷移し、メール通知が届く | 攻撃検知時に気づける仕組みの確認。終了後に閾値を戻す |
+| M-07 | WAF ログの配信確認 | production | 詳細手順 6。CloudWatch Logs に配信された WAF ログを Logs Insights で検索し、サンプリングされたリクエストの `action`（ALLOW / BLOCK / COUNT）・`terminatingRuleId` が読めること | 配信先にログが存在し、S-07 で送った攻撃リクエストが `BLOCK` として記録されている |  |
+| M-08 | WAF BlockedRequests アラートの発報 | production | 詳細手順 7。`AWS/WAFV2` の `BlockedRequests` に CloudWatch アラームを設定 → S-07 の攻撃ペイロード送信 or 閾値を一時的に下げて `ALARM` に遷移させる → 通知先メール受信を確認 | `BlockedRequests` アラームが `ALARM` に遷移し、メール通知が届く | 攻撃検知時に気づける仕組みの確認。終了後に閾値を戻す |
 
 ## 詳細手順
 
-### 手順 1（M-03）：閾値超過によるメール通知試験
+### 手順 1（M-01）：SNS サブスクリプション確認
+
+```bash
+aws sns list-subscriptions-by-topic --topic-arn <alarm topic> \
+  --query "Subscriptions[*].{Protocol:Protocol,Endpoint:Endpoint,Arn:SubscriptionArn}"
+```
+
+### 手順 2（M-02）：CloudWatchアラーム（ECS・ALB・RDS）が OK 状態
+
+```bash
+aws cloudwatch describe-alarms --alarm-name-prefix "tomario-staging" \
+  --query "MetricAlarms[*].{Name:AlarmName,State:StateValue,Reason:StateReason}" --output table
+```
+
+### 手順 3（M-03）：閾値超過によるメール通知試験
 
 ```bash
 # 対象アラームの現在の閾値を控える
@@ -57,7 +71,7 @@ aws cloudwatch describe-alarm-history --alarm-name tomario-staging-ecs-cpu \
 確認するもの：`OK → ALARM` の遷移が履歴に残ること、通知先メールに `ALARM:` 件名のメールが届くこと。
 **終了後**：閾値を元に戻す。試験用に作成したアラームは `delete-alarms` で削除する。
 
-### 手順 2（M-04）：ログ追跡性（CloudWatch Logs Insights）
+### 手順 4（M-04）：ログ追跡性（CloudWatch Logs Insights）
 
 **注意（2026-09-26修正）**：`tomario-app`の`app.py`にはログ／例外処理の実装が無く、Flaskの開発用サーバー（`app.run()`）をそのまま使っている。そのため「`ERROR`という文字列が出る」保証が無く、また直近にエラーが発生していなければ`filter`しても0件で終わり確認にならない。**先に生ログの実際の形式を確認し、無ければ能動的にエラーを起こしてから絞り込む**、の順で行う。
 
@@ -88,15 +102,24 @@ aws logs get-query-results --query-id <queryId>
 
 **既知の制約**：ECS側のログ設定（`modules/backend/ecs.tf`）に`awslogs-multiline-pattern`が未設定のため、複数行にまたがるスタックトレースはCloudWatch Logs上で1行＝1イベントに分断される。1つの`@message`でスタックトレース全体は追えない可能性が高い点に留意し、実際にそうであれば「調査に使えない」という結果として記録する（対応候補：構造化ログ導入・`@app.errorhandler`追加・`awslogs-multiline-pattern`設定）。
 
-### 手順 3（M-07）：WAF ログの配信確認
+### 手順 5（M-05）：ECS アプリログの出力確認
 
 ```bash
-# 配信先が S3 の場合
-aws s3 ls s3://<WAF ログバケット>/AWSLogs/ --recursive | tail
-# 配信先が CloudWatch Logs の場合（ロググループ名は aws-waf-logs- で始まる必要がある）
+# 最近更新されたログストリームを 3 件取得
+aws logs describe-log-streams --log-group-name "/ecs/tomario-staging" --order-by LastEventTime --descending --max-items 3
+
+# 最新のログストリームからログを 20 件取得（<stream> は上の結果の logStreamName に置換）
+aws logs get-log-events --log-group-name "/ecs/tomario-staging" --log-stream-name "<stream>" \
+  --limit 20 --query "events[*].message" --output text
+```
+
+### 手順 6（M-07）：WAF ログの配信確認
+
+```bash
+# WAF ログのロググループを確認（CloudFront 用・ALB 用の 2 つ）
 aws logs describe-log-groups --log-group-name-prefix "aws-waf-logs-" \
   --query "logGroups[*].{name:logGroupName,retention:retentionInDays}"
-aws logs start-query --log-group-name "aws-waf-logs-<name>" \
+aws logs start-query --log-group-name "aws-waf-logs-tomario-production-cloudfront" \
   --start-time $(date -v-1H +%s 2>/dev/null || date -d '1 hour ago' +%s) --end-time $(date +%s) \
   --query-string 'fields @timestamp, action, terminatingRuleId, httpRequest.uri | filter action="BLOCK" | limit 20'
 aws logs get-query-results --query-id <queryId>
@@ -104,7 +127,7 @@ aws logs get-query-results --query-id <queryId>
 
 確認するもの：S-07 で送った攻撃リクエストが `action=BLOCK` で残っていること。ログが空なら配信設定（`wafv2 put-logging-configuration`）を見直す。
 
-### 手順 4（M-08）：WAF BlockedRequests アラートの発報
+### 手順 7（M-08）：WAF BlockedRequests アラートの発報
 
 ```bash
 # アラーム作成（例：5 分で BlockedRequests が 10 を超えたら ALARM）

@@ -31,6 +31,5 @@
 - [ ] ランブック（障害対応手順）に更新が必要な変更がなかったか確認する。既存の関連ドキュメント：
   - デプロイロールバック手順：[operations-test-procedure.md](../verification/non-functional-test/procedures/operations-test-procedure.md)
   - WAF緊急デタッチ手順：同上
-  - ログ多行スタックトレースの手動反映手順：`tomario-workspace/task-and-flow/m04-multiline-pattern-manual-reflection.md`
 - [ ] 監視ダッシュボード・アラーム閾値が今回のリリース内容に対して引き続き適切か確認する
 - [ ] リリース判定基準（[release-criteria.md](release-criteria.md)）自体に見直しが必要な学びがなかったか確認する

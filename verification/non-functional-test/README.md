@@ -12,7 +12,7 @@ prod 同等構成の staging 環境で、性能・可用性・信頼性・復旧
 | ファイル | 内容 |
 |---|---|
 | [test-plan.md](test-plan.md) | 非機能試験計画書。試験方針・対象環境・確認項目一覧（実施前に定義） |
-| [test-summary.md](test-summary.md) | 実施サマリ。全 43 項目の合格・スキップの一覧 |
+| [test-summary.md](test-summary.md) | 実施サマリ。全 29 項目の合格・スキップの一覧 |
 | [procedures/](procedures/) | 試験種別ごとの実施手順書（目的・前提条件・試験項目一覧・詳細手順） |
 | [results/](results/) | 試験種別ごとの結果報告書。手順書の各項番に対応する |
 | [evidence/](evidence/) | スクリーンショット・ログ等のエビデンス |
@@ -27,23 +27,23 @@ prod 同等構成の staging 環境で、性能・可用性・信頼性・復旧
 | 可用性・信頼性（サーキットブレーカー・タスク強制停止・データ整合性・無停止デプロイ） | [availability-test-procedure.md](procedures/availability-test-procedure.md) | [availability-test-result.md](results/availability-test-result.md) |
 | バックアップ・復旧（DR 訓練・PITR） | [backup-test-procedure.md](procedures/backup-test-procedure.md) | [backup-test-result.md](results/backup-test-result.md) |
 | 監視（アラート発報・ログ追跡性） | [monitoring-test-procedure.md](procedures/monitoring-test-procedure.md) | [monitoring-test-result.md](results/monitoring-test-result.md) |
-| 運用オペレーション（デプロイロールバック・インフラ再構築） | [operations-test-procedure.md](procedures/operations-test-procedure.md) | [operations-test-result.md](results/operations-test-result.md) |
+| 運用オペレーション（デプロイロールバック・WAF 緊急デタッチ） | [operations-test-procedure.md](procedures/operations-test-procedure.md) | [operations-test-result.md](results/operations-test-result.md) |
 | セキュリティ（脆弱性診断・ネットワーク境界・証跡） | [security-test-procedure.md](procedures/security-test-procedure.md) | [security-test-result.md](results/security-test-result.md) |
 
 ## 結果サマリ
 
-**全43項目が決着済み**（合格 36件、意図的スキップ 7件）。詳細は [test-summary.md](test-summary.md) を参照。
+**全29項目が決着済み**（合格 24件、意図的スキップ 5件）。詳細は [test-summary.md](test-summary.md) を参照。
 
 | 試験種別 | 対象項番 | ステータス |
 |---|---|---|
-| 性能 | P-00〜P-09 | ✅ 全項目決着（P-09はスキップ） |
+| 性能 | P-01〜P-03 | ✅ 全項目決着（P-03はスキップ） |
 | 可用性・信頼性 | A-01〜A-04 | ✅ 全項目合格 |
-| バックアップ・復旧 | B-01〜B-06 | ✅ 全項目決着（B-06はスキップ） |
+| バックアップ・復旧 | B-01〜B-02 | ✅ 全項目合格 |
 | 監視 | M-01〜M-08 | ✅ 全項目合格 |
-| 運用オペレーション | O-01〜O-03 | ✅ 全項目合格 |
+| 運用オペレーション | O-01〜O-02 | ✅ 全項目合格 |
 | セキュリティ | S-01〜S-10 | ✅ 全項目決着（S-03/S-06/S-08/S-10はスキップ） |
 
-> **production 固有の追加検証**（WAF・Security Hub・AWS Config 導入に伴う）：P-09（WAF レイテンシ影響）／M-07・M-08（WAF ログ・アラート）／O-03（WAF 緊急デタッチ）／S-07〜S-10（WAF ルール有効性・誤検知・Security Hub / Config レビュー）。WAF Web ACL の cost-stop/start 組み込み自体、および staging の cost-stop → cost-start によるインフラ再構築確認は、いずれも日常運用で確認できるため独立した試験項目としては置いていない。
+> **production 固有の追加検証**（WAF・Security Hub・AWS Config 導入に伴う）：P-03（WAF レイテンシ影響）／M-07・M-08（WAF ログ・アラート）／O-02（WAF 緊急デタッチ）／S-07〜S-10（WAF ルール有効性・誤検知・Security Hub / Config レビュー）。WAF Web ACL の cost-stop/start 組み込み自体、および staging の cost-stop → cost-start によるインフラ再構築確認は、いずれも日常運用で確認できるため独立した試験項目としては置いていない。
 
 ## 用語について
 
