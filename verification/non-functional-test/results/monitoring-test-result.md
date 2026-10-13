@@ -15,7 +15,7 @@
 
 | 番号 | 項目 | 実測結果 | 実施日 | 合否 |
 |---|---|---|---|---|
-| M-01 | SNS サブスクリプション確認（staging） | **合格**。`list-subscriptions-by-topic` で `masashi00aws@gmail.com` の `SubscriptionArn` が `PendingConfirmation` ではなく実 ARN であることを確認 | 2026-09-26 | ✅ |
+| M-01 | SNS サブスクリプション確認（staging） | **合格**。`list-subscriptions-by-topic` で 管理者メールアドレスの `SubscriptionArn` が `PendingConfirmation` ではなく実 ARN であることを確認 | 2026-09-26 | ✅ |
 | M-02 | アラームが OK 状態（staging） | **合格**。`tomario-staging-{alb-unhealthy-host,ecs-cpu,rds-cpu}` の3件とも `StateValue: OK`（`INSUFFICIENT_DATA` なし） | 2026-09-26 | ✅ |
 | M-03 | 閾値超過 → メール通知到達（staging） | **合格**。`tomario-staging-ecs-cpu`の閾値を80%→0.01%に一時変更し、5分×2回連続の実データで`OK→ALARM`遷移を確認（`StateReason`に実測値2件記載）、メール通知の受信も確認。試験後、閾値を80%へ復元済み | 2026-09-29 | ✅ |
 | M-04 | ログ追跡性（Logs Insights、staging） | **合格**（`awslogs-multiline-pattern`反映後に再検証）。実測手順・結果は下記「M-04 詳細」参照。時刻・エンドポイント・ステータスコード・スタックトレース全体まで1つの`@message`で辿れることを確認。request-id自体は未実装のため、エラーメッセージに区別できる情報が無いケースでの厳密な個別リクエスト追跡は依然できない（既知の制約として記録） | 2026-09-29 | ✅ |
