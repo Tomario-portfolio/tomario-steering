@@ -29,6 +29,7 @@
 - [ ] ハイパーケア期間中に発生したインシデント・対応内容を記録する（`tomario-workspace/history/activity_log/`に記載）
 - [ ] 今回のリリースで新たに判明した問題・改善点があれば`tomario-workspace/task-and-flow/remaining-task.md`に追加する
 - [ ] ランブック（障害対応手順）に更新が必要な変更がなかったか確認する。既存の関連ドキュメント：
+  - 障害対応手順（ランブック）：[incident-runbook.md](../operations/incident-runbook.md)
   - デプロイロールバック手順：[operations-test-procedure.md](../verification/non-functional-test/procedures/operations-test-procedure.md)
   - WAF緊急デタッチ手順：同上
 - [ ] 監視ダッシュボード・アラーム閾値が今回のリリース内容に対して引き続き適切か確認する
