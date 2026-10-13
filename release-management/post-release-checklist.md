@@ -18,7 +18,7 @@
 - [ ] ホテル予約ができる
 - [ ] 予約のキャンセルができる
 
-（[test-plan.md](../verification/non-functional-test/test-plan.md)のP-00ベースライン測定・A-03データ整合性確認と同じ導線を使う）
+（[test-plan.md](../verification/non-functional-test/test-plan.md)の性能試験のベースライン測定・A-03データ整合性確認と同じ導線を使う）
 
 ## 3. 監視ダッシュボード確認
 

@@ -17,8 +17,8 @@
 |---|---|---|
 | CloudWatchアラームが1件ALARM | 該当メトリクスを確認し、一時的なスパイクか継続的な悪化かを判断 | 5分以内に自然回復すれば静観、継続する場合は次の段階へ |
 | 5xxエラーの急増・サービス断 | ログ確認 → 原因が直近の変更に起因すると判断できれば即座に[cutover-and-rollback.md](cutover-and-rollback.md)の切り戻しを実施 | 影響がユーザー体験に及ぶ場合は判断を待たず切り戻しを優先する |
-| WAFの誤検知でユーザーがブロックされる | [O-03（WAF緊急デタッチ手順）](../verification/non-functional-test/results/operations-test-result.md)を実施 | 正規リクエストのブロック率が明確に異常な場合 |
-| RDSの異常（接続断・CPU高負荷） | RDSメトリクス確認、必要に応じて[B-03（PITR）](../verification/non-functional-test/results/backup-test-result.md)による復旧を検討 | データ破損・接続不能が継続する場合 |
+| WAFの誤検知でユーザーがブロックされる | [O-02（WAF緊急デタッチ手順）](../verification/non-functional-test/results/operations-test-result.md)を実施 | 正規リクエストのブロック率が明確に異常な場合 |
+| RDSの異常（接続断・CPU高負荷） | RDSメトリクス確認、必要に応じて[B-02（PITR）](../verification/non-functional-test/results/backup-test-result.md)による復旧を検討 | データ破損・接続不能が継続する場合 |
 
 本ポートフォリオでは判定者・実施者・監視担当を1人で兼務するため、実際のエスカレーション先（他チーム・オンコール担当）は存在しない。実務では、この表の「一次対応」欄が「誰が」「どのSlackチャネル/オンコールツールで」動くかまで具体化される。
 

@@ -20,6 +20,6 @@ Tomarioは実際にこのプロセスを本番運用として繰り返すわけ�
 このドキュメント群は新しい仕組みを作るのではなく、既に`tomario-infra`・`tomario-app`に実装済みの以下の仕組みを「いつ・誰が・どう使うか」という運用の型にはめたもの。
 
 - promoteフロー：`tomario-app`の`deploy.yml`の`promote-to-production`ジョブ。staging検証済みイメージをdigest指定でpull→再タグ→production ECRへpush（再ビルドしない）。GitHub Environment「prod」のRequired reviewersにより手動承認ゲートがかかる
-- デプロイサーキットブレーカー：ECSのデプロイが異常な場合に自動ロールバックする仕組み（[A-01](../verification/non-functional-test/results/availability-test-result.md)で実測済み、MTTR約1分50秒）
+- デプロイサーキットブレーカー：ECSのデプロイが異常な場合に自動ロールバックする仕組み（[A-01](../verification/non-functional-test/results/availability-test-result.md)で実測済み、失敗検知からロールバック完了まで約1分50秒）
 - cost-start/cost-stop：`tomario-infra`の`cost-start.yml`/`cost-stop.yml`。環境の起動・停止を切り替える
 - 非機能試験の合否・スキップ判断一式：[verification/non-functional-test/test-summary.md](../verification/non-functional-test/test-summary.md)（全43項目決着済み）
